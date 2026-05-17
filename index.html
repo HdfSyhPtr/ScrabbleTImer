@@ -1,0 +1,2574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Scrabble Timer</title>
+  <meta name="description" content="A clean over-the-board timer for 2 to 6 players.">
+  <meta name="theme-color" content="#111011">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Scrabble Timer">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4efe3;
+      --bg-strong: #eadfca;
+      --panel: #fffaf0;
+      --panel-strong: #f7edd9;
+      --ink: #2e2418;
+      --muted: #7c6c55;
+      --line: #d6c6ab;
+      --accent: #b7802f;
+      --accent-soft: rgba(183, 128, 47, 0.14);
+      --danger: #b64937;
+      --shadow: 0 18px 40px rgba(66, 43, 10, 0.12);
+      --radius: 22px;
+      --body-top: #f8f2e7;
+      --body-bottom: #efe5d3;
+      --body-glow: rgba(183, 128, 47, 0.18);
+    }
+
+    body {
+      min-height: 100dvh;
+      background:
+        radial-gradient(circle at top, var(--body-glow), transparent 38%),
+        linear-gradient(180deg, var(--body-top) 0%, var(--body-bottom) 100%);
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      overflow: hidden;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: inherit;
+    }
+
+    .caps {
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    .screen {
+      width: 100vw;
+      height: 100dvh;
+    }
+
+    #setup-screen {
+      overflow: auto;
+      padding: 32px 16px 72px;
+    }
+
+    .setup-shell {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero {
+      padding: 26px 24px 20px;
+      border: 1px solid rgba(183, 128, 47, 0.22);
+      border-radius: calc(var(--radius) + 6px);
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--panel) 92%, white 8%), color-mix(in srgb, var(--panel-strong) 96%, transparent 4%)),
+        var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 14px;
+    }
+
+    .hero-badge::before {
+      content: "";
+      width: 42px;
+      height: 1px;
+      background: currentColor;
+      opacity: 0.45;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 7vw, 4.6rem);
+      line-height: 0.94;
+      letter-spacing: 0.03em;
+      margin-bottom: 14px;
+    }
+
+    .hero p {
+      max-width: 34rem;
+      color: #5b4b35;
+      font-size: 1rem;
+      line-height: 1.55;
+    }
+
+    .hero-note {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .card {
+      padding: 22px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 92%, transparent 8%);
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 18px;
+    }
+
+    .settings-btn {
+      padding: 11px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 76%, transparent 24%);
+      color: var(--muted);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      font-size: 0.82rem;
+      transition: 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .settings-btn:hover {
+      color: var(--ink);
+      border-color: rgba(90, 66, 30, 0.22);
+    }
+
+    .section-title {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .section-block {
+      display: grid;
+      gap: 10px;
+    }
+
+    #player-rows {
+      display: grid;
+      gap: 10px;
+    }
+
+    .player-row {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) 42px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .swatch {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      border: 2px solid rgba(46, 36, 24, 0.08);
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3);
+    }
+
+    .swatch input[type="color"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .name-input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 80%, transparent 20%);
+      color: var(--ink);
+      outline: none;
+      font-size: 1rem;
+    }
+
+    .name-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(183, 128, 47, 0.12);
+    }
+
+    .icon-btn {
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 72%, transparent 28%);
+      font-size: 1.1rem;
+      transition: 0.18s ease;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .ghost-btn {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      background: color-mix(in srgb, var(--panel) 60%, transparent 40%);
+      transition: 0.18s ease;
+    }
+
+    .ghost-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255,255,255,0.7);
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip,
+    .toggle-btn {
+      padding: 11px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 72%, transparent 28%);
+      color: var(--muted);
+      transition: 0.18s ease;
+      font-size: 0.95rem;
+    }
+
+    .chip.on,
+    .toggle-btn.on {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: #6f4610;
+      box-shadow: inset 0 0 0 1px rgba(183, 128, 47, 0.18);
+    }
+
+    .inline-input {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted);
+    }
+
+    .custom-hms-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+    }
+
+    .hms-field {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .hms-field input {
+      width: 64px;
+      padding: 11px 10px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 84%, transparent 16%);
+      color: var(--ink);
+      outline: none;
+      text-align: center;
+      font-size: 1rem;
+    }
+
+    .hms-field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(183, 128, 47, 0.12);
+    }
+
+    .hms-unit {
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+    }
+
+    .hms-label {
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+
+    .inline-input input {
+      width: 92px;
+      padding: 11px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 84%, transparent 16%);
+      color: var(--ink);
+      outline: none;
+    }
+
+    .toggle-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.56);
+    }
+
+    .toggle-copy {
+      display: grid;
+      gap: 4px;
+    }
+
+    .toggle-copy strong {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .toggle-copy span {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .switch {
+      width: 58px;
+      height: 34px;
+      border-radius: 999px;
+      background: #d8c8af;
+      position: relative;
+      transition: 0.18s ease;
+      flex-shrink: 0;
+    }
+
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #fff9ef;
+      box-shadow: 0 2px 8px rgba(47, 30, 7, 0.2);
+      transition: 0.18s ease;
+    }
+
+    .switch.on {
+      background: #c69345;
+    }
+
+    .switch.on::after {
+      left: 28px;
+    }
+
+    .order-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .order-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.62);
+      transition: 0.18s ease;
+      cursor: grab;
+    }
+
+    .order-item.dragging {
+      opacity: 0.42;
+    }
+
+    .order-item.drag-over {
+      border-color: var(--accent);
+      background: rgba(183, 128, 47, 0.08);
+    }
+
+    .order-handle,
+    .order-index {
+      color: var(--muted);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      font-size: 0.85rem;
+    }
+
+    .order-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .order-name {
+      flex: 1;
+      min-width: 0;
+      font-size: 1rem;
+    }
+
+    .settings-summary {
+      display: grid;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 74%, transparent 26%);
+    }
+
+    .settings-summary p {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.92rem;
+    }
+
+    .start-btn {
+      width: 100%;
+      padding: 18px 22px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #c89542, #a76f23);
+      color: #fff7ea;
+      box-shadow: 0 14px 28px rgba(129, 82, 18, 0.24);
+      font-size: 1rem;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .start-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 32px rgba(129, 82, 18, 0.28);
+    }
+
+    #game-screen {
+      display: none;
+      position: relative;
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--panel) 22%, transparent 78%), transparent 28%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-strong) 100%);
+    }
+
+    #board {
+      position: absolute;
+      inset: 0;
+    }
+
+    .timer-panel {
+      position: absolute;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: filter 0.2s ease, transform 0.2s ease;
+      cursor: pointer;
+    }
+
+    .panel-inner {
+      width: calc(100% - 18px);
+      height: calc(100% - 18px);
+      border-radius: 30px;
+      border: 1px solid rgba(46, 36, 24, 0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 8px;
+      padding: 18px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.22);
+    }
+
+    .timer-panel.active .panel-inner {
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.26),
+        0 0 0 6px rgba(255,255,255,0.24);
+    }
+
+    .timer-panel.active {
+      filter: saturate(1.05);
+    }
+
+    .timer-panel.low .time-main,
+    .timer-panel.low .time-ms {
+      color: #8b2415;
+    }
+
+    .timer-panel.out .time-main,
+    .timer-panel.out .time-ms,
+    .timer-panel.out .panel-player {
+      color: #7d2014;
+    }
+
+    .timer-panel.over .time-main,
+    .timer-panel.over .time-ms,
+    .timer-panel.over .panel-player,
+    .timer-panel.over .panel-status {
+      color: #9a3a22;
+    }
+
+    .panel-player {
+      font-size: clamp(0.95rem, 2vw, 1.6rem);
+      letter-spacing: 0.06em;
+    }
+
+    .time-main {
+      font-family: "Courier New", monospace;
+      font-size: clamp(2.6rem, 8vw, 6rem);
+      line-height: 0.92;
+      letter-spacing: -0.04em;
+    }
+
+    .time-ms {
+      font-family: "Courier New", monospace;
+      font-size: clamp(0.9rem, 2.4vw, 1.8rem);
+      line-height: 1;
+      color: rgba(46, 36, 24, 0.68);
+      min-height: 1em;
+    }
+
+    .panel-status {
+      min-height: 1em;
+      color: rgba(46, 36, 24, 0.68);
+      font-size: clamp(0.55rem, 1.1vw, 0.82rem);
+    }
+
+    .timer-panel.active .panel-status {
+      color: rgba(46, 36, 24, 0.92);
+    }
+
+    .timer-panel.out .panel-status {
+      color: #7d2014;
+    }
+
+    .panel-rotated .panel-inner {
+      transform: rotate(180deg);
+    }
+
+    .divider {
+      position: absolute;
+      background: rgba(90, 66, 30, 0.16);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .divider.h {
+      left: 0;
+      right: 0;
+      height: 2px;
+    }
+
+    .divider.v {
+      top: 0;
+      bottom: 0;
+      width: 2px;
+    }
+
+    .center-hud {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      text-align: center;
+      pointer-events: none;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: rgba(255, 248, 235, 0.72);
+      border: 1px solid rgba(90, 66, 30, 0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    .center-hud .top {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .center-hud .bottom {
+      color: var(--ink);
+      font-size: clamp(0.9rem, 2vw, 1.15rem);
+    }
+
+    .toolbar {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 7;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 24px;
+      background: color-mix(in srgb, var(--panel) 86%, transparent 14%);
+      border: 1px solid rgba(90, 66, 30, 0.12);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .toolbar-btn {
+      padding: 12px 16px;
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--panel) 84%, transparent 16%);
+      border: 1px solid rgba(90, 66, 30, 0.12);
+      color: var(--muted);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      font-size: 0.86rem;
+      transition: 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .toolbar-btn:hover {
+      color: var(--ink);
+      border-color: rgba(90, 66, 30, 0.22);
+    }
+
+    .toolbar-btn.primary {
+      background: linear-gradient(135deg, #c89542, #a76f23);
+      color: #fff7ea;
+      border-color: transparent;
+    }
+
+    .toolbar-btn.danger:hover {
+      color: var(--danger);
+      border-color: rgba(182, 73, 55, 0.24);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.82rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(63, 42, 17, 0.36);
+      backdrop-filter: blur(8px);
+      z-index: 20;
+      padding: 18px;
+    }
+
+    .overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      width: min(420px, 100%);
+      padding: 24px;
+      border-radius: 24px;
+      background: color-mix(in srgb, var(--panel) 96%, transparent 4%);
+      border: 1px solid rgba(90, 66, 30, 0.12);
+      box-shadow: 0 26px 50px rgba(45, 29, 8, 0.22);
+      display: grid;
+      gap: 16px;
+      text-align: center;
+    }
+
+    .settings-modal {
+      width: min(760px, 100%);
+      text-align: left;
+      max-height: 92dvh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 0 0 24px;
+    }
+
+    .settings-modal > p,
+    .settings-modal > .settings-grid,
+    .settings-modal > .modal-actions {
+      padding: 0 24px;
+    }
+
+    .settings-nav {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      background: color-mix(in srgb, var(--panel) 97%, transparent 3%);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+      border-radius: 24px 24px 0 0;
+    }
+
+    .settings-nav-back {
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 72%, transparent 28%);
+      color: var(--muted);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      font-size: 0.82rem;
+      letter-spacing: 0.05em;
+      transition: 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .settings-nav-back:hover {
+      color: var(--ink);
+      border-color: var(--accent);
+    }
+
+    .settings-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .settings-card {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--panel) 78%, transparent 22%);
+      border: 1px solid rgba(90, 66, 30, 0.08);
+    }
+
+    .settings-card h3 {
+      font-size: 1rem;
+    }
+
+    .settings-card p {
+      font-size: 0.9rem;
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .theme-btn {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 82%, transparent 18%);
+      color: var(--ink);
+      text-align: left;
+      transition: 0.18s ease;
+    }
+
+    .theme-btn.active {
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 1px rgba(183, 128, 47, 0.18);
+      background: var(--accent-soft);
+    }
+
+    .theme-swatches {
+      display: flex;
+      gap: 6px;
+    }
+
+    .theme-swatches span {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(46, 36, 24, 0.08);
+    }
+
+    .file-slot {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 82%, transparent 18%);
+    }
+
+    .file-slot-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .file-slot strong {
+      font-size: 0.98rem;
+    }
+
+    .file-slot small,
+    .file-slot span {
+      color: var(--muted);
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .custom-theme-editor {
+      display: none;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .custom-theme-editor.show {
+      display: grid;
+    }
+
+    .color-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .color-field label {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .color-field input[type="color"] {
+      width: 100%;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: transparent;
+      padding: 0;
+    }
+
+    .mini-btn {
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 84%, transparent 16%);
+      color: var(--muted);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      font-size: 0.8rem;
+    }
+
+    .modal h2 {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .modal p {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .modal-list {
+      display: grid;
+      gap: 8px;
+      text-align: left;
+    }
+
+    .modal-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(90, 66, 30, 0.08);
+    }
+
+    .modal-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .modal-name {
+      flex: 1;
+    }
+
+    .modal-time {
+      font-family: "Courier New", monospace;
+      color: var(--muted);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-actions button {
+      flex: 1;
+      padding: 13px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(90, 66, 30, 0.12);
+      background: rgba(255,255,255,0.8);
+    }
+
+    .modal-actions .primary {
+      background: linear-gradient(135deg, #c89542, #a76f23);
+      color: #fff7ea;
+      border-color: transparent;
+    }
+
+    .modal-actions .danger {
+      color: var(--danger);
+    }
+
+    @media (max-width: 760px) {
+      .hero {
+        padding: 22px 18px 18px;
+      }
+
+      .hero-head {
+        flex-direction: column;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .custom-theme-editor {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .toolbar-group {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .hint {
+        text-align: center;
+      }
+    }
+
+    @media (min-width: 980px) and (min-aspect-ratio: 6/4) {
+      #setup-screen {
+        padding: 20px 18px;
+      }
+
+      .setup-shell {
+        width: min(1320px, 100%);
+        height: calc(100dvh - 40px);
+        grid-template-columns: minmax(320px, 0.9fr) minmax(520px, 1.1fr);
+        align-items: stretch;
+      }
+
+      .hero {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .card {
+        height: 100%;
+        overflow: auto;
+        align-content: start;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #players-block,
+      #order-block,
+      #start-btn {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="setup-screen" class="screen">
+    <div class="setup-shell">
+      <section class="hero">
+        <div class="hero-head">
+          <div class="hero-badge caps">OTB multi-player clock</div>
+          <div class="hero-actions">
+            <button id="open-settings-setup" class="settings-btn caps" type="button">Settings</button>
+          </div>
+        </div>
+        <h1>Scrabble timer,<br>nothing extra.</h1>
+        <p>
+          A clean over-the-board timer for 2 to 6 players. Set the order before the game,
+          hand the device to the table, and let the app stay focused on time.
+        </p>
+        <div class="hero-note caps">
+          <span>Fixed order</span>
+          <span>Tap or space to pass</span>
+          <span>Built for in-person play</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-block" id="players-block">
+          <div class="section-title caps">Players</div>
+          <div id="player-rows"></div>
+          <button id="add-player-btn" class="ghost-btn caps" type="button">Add Player</button>
+        </div>
+
+        <div class="section-block">
+          <div class="section-title caps">Mode</div>
+          <div class="chip-row">
+            <button class="toggle-btn on" id="mode-timer" type="button">Timer</button>
+            <button class="toggle-btn" id="mode-stopwatch" type="button">Stopwatch</button>
+          </div>
+        </div>
+
+        <div class="section-block" id="time-bank-section">
+          <div class="section-title caps">Time Bank Per Player</div>
+          <div class="chip-row" id="time-presets"></div>
+          <div class="custom-hms-row">
+            <label class="hms-field">
+              <input id="custom-hours" type="number" min="0" max="23" inputmode="numeric" placeholder="0">
+              <span class="caps hms-unit">h</span>
+            </label>
+            <label class="hms-field">
+              <input id="custom-minutes" type="number" min="0" max="59" inputmode="numeric" placeholder="0">
+              <span class="caps hms-unit">m</span>
+            </label>
+            <label class="hms-field">
+              <input id="custom-seconds" type="number" min="0" max="59" inputmode="numeric" placeholder="0">
+              <span class="caps hms-unit">s</span>
+            </label>
+            <span class="caps hms-label">custom time</span>
+          </div>
+        </div>
+
+        <div class="section-block" id="timeout-behavior-section">
+          <div class="section-title caps">After Time Runs Out</div>
+          <div class="chip-row">
+            <button class="toggle-btn on" id="timeout-skip" type="button">Skip Player</button>
+            <button class="toggle-btn" id="timeout-overtime" type="button">Allow Overtime</button>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <div class="section-title caps">Settings</div>
+          <div class="settings-summary">
+            <p id="settings-summary-text">Theme presets, display options, and audio live in settings so the timer stays uncluttered.</p>
+            <button id="open-settings-inline" class="settings-btn caps" type="button">Open Settings</button>
+          </div>
+        </div>
+
+        <div class="section-block" id="order-block">
+          <div class="section-title caps">Turn Order</div>
+          <div class="chip-row">
+            <button class="toggle-btn on" id="mode-custom" type="button">Custom / Fixed</button>
+            <button class="toggle-btn" id="mode-cw" type="button">Clockwise</button>
+            <button class="toggle-btn" id="mode-ccw" type="button">Counter</button>
+          </div>
+          <div id="order-list" class="order-list"></div>
+        </div>
+
+        <button id="start-btn" class="start-btn caps" type="button">Start Timer</button>
+      </section>
+    </div>
+  </main>
+
+  <main id="game-screen" class="screen">
+    <div id="board"></div>
+    <div class="center-hud">
+      <div id="center-top" class="top caps">Round 1</div>
+      <div id="center-bottom" class="bottom">Waiting to start</div>
+    </div>
+    <div class="toolbar">
+      <div class="toolbar-group">
+        <button id="pause-btn" class="toolbar-btn" type="button">Pause</button>
+        <button id="pass-btn" class="toolbar-btn primary" type="button">Pass Turn</button>
+        <button id="open-settings-game" class="toolbar-btn" type="button">Settings</button>
+        <button id="end-btn" class="toolbar-btn danger" type="button">End Game</button>
+      </div>
+      <div class="hint caps">Tap the active panel or press space / enter</div>
+    </div>
+  </main>
+
+  <div id="settings-overlay" class="overlay">
+    <div class="modal settings-modal">
+      <div class="settings-nav">
+        <button id="close-settings-top-btn" class="settings-nav-back" type="button">&#8592; Back</button>
+        <h2 style="font-size:1.4rem;line-height:1">Settings</h2>
+        <div style="width:72px"></div>
+      </div>
+      <p>Preset themes, optional sounds, and small display tweaks live here instead of on the main screen.</p>
+      <div class="settings-grid">
+        <section class="settings-card">
+          <h3>Themes</h3>
+          <p>Switch the app mood depending on the room, table, or game.</p>
+          <div id="theme-grid" class="theme-grid"></div>
+        </section>
+        <section class="settings-card">
+          <h3>Custom Theme</h3>
+          <p>Pick your own palette when none of the presets fits.</p>
+          <div id="custom-theme-editor" class="custom-theme-editor"></div>
+        </section>
+        <section class="settings-card">
+          <h3>Display</h3>
+          <button id="ms-toggle" class="toggle-line" type="button">
+            <span class="toggle-copy">
+              <strong>Show hundredths</strong>
+              <span>Useful for close finishes without cluttering the main setup.</span>
+            </span>
+            <span id="ms-switch" class="switch" aria-hidden="true"></span>
+          </button>
+        </section>
+        <section class="settings-card">
+          <h3>Audio Slots</h3>
+          <p>Choose your own files here later. The app will use them for clock passes and general button clicks.</p>
+          <div id="audio-slots" class="section-block"></div>
+        </section>
+        <section class="settings-card">
+          <h3>Why Settings?</h3>
+          <p>This keeps the timer itself focused. Setup stays visible on wider screens instead of growing into a long scroll.</p>
+        </section>
+      </div>
+      <div class="modal-actions">
+        <button id="reset-settings-btn" class="danger" type="button">Reset Defaults</button>
+        <button id="close-settings-btn" class="primary" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pause-overlay" class="overlay">
+    <div class="modal">
+      <h2>Paused</h2>
+      <p>The timer is frozen for the whole table. Resume when everyone is ready.</p>
+      <div class="modal-actions">
+        <button id="resume-btn" class="primary" type="button">Resume</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="end-overlay" class="overlay">
+    <div class="modal">
+      <h2>End Game?</h2>
+      <p>Stop the timer and view the remaining time for each player.</p>
+      <div class="modal-actions">
+        <button id="cancel-end-btn" type="button">Cancel</button>
+        <button id="confirm-end-btn" class="primary" type="button">End</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="final-overlay" class="overlay">
+    <div class="modal">
+      <h2>Time Summary</h2>
+      <p>Remaining time at the end of the game.</p>
+      <div id="final-list" class="modal-list"></div>
+      <div class="modal-actions">
+        <button id="new-game-btn" class="primary" type="button">New Game</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_PLAYERS = [
+      { name: "Alice", color: "#cf9c4b" },
+      { name: "Bob", color: "#d46a4d" },
+      { name: "Carol", color: "#6d9966" },
+      { name: "Dave", color: "#5f85c8" }
+    ];
+
+    const THEMES = {
+      light: {
+        label: "Light",
+        vars: {
+          "--bg": "#f4efe3",
+          "--bg-strong": "#eadfca",
+          "--panel": "#fffaf0",
+          "--panel-strong": "#f7edd9",
+          "--ink": "#2e2418",
+          "--muted": "#7c6c55",
+          "--line": "#d6c6ab",
+          "--accent": "#b7802f",
+          "--accent-soft": "rgba(183, 128, 47, 0.14)",
+          "--danger": "#b64937",
+          "--shadow": "0 18px 40px rgba(66, 43, 10, 0.12)",
+          "--body-top": "#f8f2e7",
+          "--body-bottom": "#efe5d3",
+          "--body-glow": "rgba(183, 128, 47, 0.18)"
+        },
+        swatches: ["#f8f2e7", "#fffaf0", "#b7802f"]
+      },
+      dark: {
+        label: "Dark",
+        vars: {
+          "--bg": "#171617",
+          "--bg-strong": "#232124",
+          "--panel": "#211d1f",
+          "--panel-strong": "#2d282b",
+          "--ink": "#f4ebdf",
+          "--muted": "#b2a48f",
+          "--line": "#433b3f",
+          "--accent": "#d2a45a",
+          "--accent-soft": "rgba(210, 164, 90, 0.14)",
+          "--danger": "#d66d62",
+          "--shadow": "0 18px 40px rgba(0, 0, 0, 0.34)",
+          "--body-top": "#201c1d",
+          "--body-bottom": "#111011",
+          "--body-glow": "rgba(210, 164, 90, 0.14)"
+        },
+        swatches: ["#111011", "#211d1f", "#d2a45a"]
+      },
+      dusk: {
+        label: "Dusk",
+        vars: {
+          "--bg": "#1a1120",
+          "--bg-strong": "#231629",
+          "--panel": "#21182a",
+          "--panel-strong": "#2c2038",
+          "--ink": "#ecd9f5",
+          "--muted": "#9b7eb5",
+          "--line": "#3d2a52",
+          "--accent": "#b47ee0",
+          "--accent-soft": "rgba(180, 126, 224, 0.15)",
+          "--danger": "#e06080",
+          "--shadow": "0 18px 40px rgba(0, 0, 0, 0.42)",
+          "--body-top": "#1e1426",
+          "--body-bottom": "#0f0b14",
+          "--body-glow": "rgba(180, 126, 224, 0.18)"
+        },
+        swatches: ["#0f0b14", "#21182a", "#b47ee0"]
+      },
+      crimson: {
+        label: "Crimson",
+        vars: {
+          "--bg": "#1a0c0b",
+          "--bg-strong": "#24100f",
+          "--panel": "#231210",
+          "--panel-strong": "#2e1714",
+          "--ink": "#f5ddd9",
+          "--muted": "#b07570",
+          "--line": "#4a1e1a",
+          "--accent": "#e05548",
+          "--accent-soft": "rgba(224, 85, 72, 0.15)",
+          "--danger": "#ff7060",
+          "--shadow": "0 18px 40px rgba(0, 0, 0, 0.44)",
+          "--body-top": "#1e0f0d",
+          "--body-bottom": "#0d0706",
+          "--body-glow": "rgba(224, 85, 72, 0.2)"
+        },
+        swatches: ["#0d0706", "#231210", "#e05548"]
+      },
+      space: {
+        label: "Space",
+        vars: {
+          "--bg": "#0c0f1a",
+          "--bg-strong": "#111624",
+          "--panel": "#141826",
+          "--panel-strong": "#1c2238",
+          "--ink": "#d8e4f8",
+          "--muted": "#6a82b8",
+          "--line": "#222d4a",
+          "--accent": "#5b8ee8",
+          "--accent-soft": "rgba(91, 142, 232, 0.15)",
+          "--danger": "#e06070",
+          "--shadow": "0 18px 40px rgba(0, 0, 0, 0.5)",
+          "--body-top": "#0f1320",
+          "--body-bottom": "#070810",
+          "--body-glow": "rgba(91, 142, 232, 0.2)"
+        },
+        swatches: ["#070810", "#141826", "#5b8ee8"]
+      },
+      forest: {
+        label: "Forest",
+        vars: {
+          "--bg": "#0a130b",
+          "--bg-strong": "#0f1a10",
+          "--panel": "#111a12",
+          "--panel-strong": "#172218",
+          "--ink": "#d4ead6",
+          "--muted": "#6a9b6e",
+          "--line": "#1e3520",
+          "--accent": "#5ab86a",
+          "--accent-soft": "rgba(90, 184, 106, 0.15)",
+          "--danger": "#e07050",
+          "--shadow": "0 18px 40px rgba(0, 0, 0, 0.46)",
+          "--body-top": "#0d170e",
+          "--body-bottom": "#060d07",
+          "--body-glow": "rgba(90, 184, 106, 0.18)"
+        },
+        swatches: ["#060d07", "#111a12", "#5ab86a"]
+      },
+      dawn: {
+        label: "Dawn",
+        vars: {
+          "--bg": "#f5ede0",
+          "--bg-strong": "#e8d9c4",
+          "--panel": "#fdf6ec",
+          "--panel-strong": "#f2e5d0",
+          "--ink": "#3a2410",
+          "--muted": "#9a7040",
+          "--line": "#ddc9a8",
+          "--accent": "#d08a3e",
+          "--accent-soft": "rgba(208, 138, 62, 0.14)",
+          "--danger": "#c05535",
+          "--shadow": "0 18px 40px rgba(88, 52, 20, 0.13)",
+          "--body-top": "#faf2e4",
+          "--body-bottom": "#eeddd0",
+          "--body-glow": "rgba(208, 138, 62, 0.2)"
+        },
+        swatches: ["#faf2e4", "#fdf6ec", "#d08a3e"]
+      },
+      spring: {
+        label: "Spring",
+        vars: {
+          "--bg": "#f0f7ee",
+          "--bg-strong": "#dff0db",
+          "--panel": "#f8fdf6",
+          "--panel-strong": "#e8f5e4",
+          "--ink": "#1e3a20",
+          "--muted": "#5a8a5c",
+          "--line": "#bdddb8",
+          "--accent": "#4caf6a",
+          "--accent-soft": "rgba(76, 175, 106, 0.14)",
+          "--danger": "#d05060",
+          "--shadow": "0 18px 40px rgba(30, 90, 40, 0.11)",
+          "--body-top": "#f4faf2",
+          "--body-bottom": "#e2f0de",
+          "--body-glow": "rgba(76, 175, 106, 0.18)"
+        },
+        swatches: ["#f4faf2", "#f8fdf6", "#4caf6a"]
+      },
+      summer: {
+        label: "Summer",
+        vars: {
+          "--bg": "#fff8e8",
+          "--bg-strong": "#fcefd0",
+          "--panel": "#fffdf5",
+          "--panel-strong": "#fdf3d8",
+          "--ink": "#3a2c08",
+          "--muted": "#9a7c28",
+          "--line": "#f0d888",
+          "--accent": "#e8b020",
+          "--accent-soft": "rgba(232, 176, 32, 0.14)",
+          "--danger": "#e05530",
+          "--shadow": "0 18px 40px rgba(100, 70, 0, 0.12)",
+          "--body-top": "#fffcf0",
+          "--body-bottom": "#fdefd0",
+          "--body-glow": "rgba(232, 176, 32, 0.22)"
+        },
+        swatches: ["#fffcf0", "#fffdf5", "#e8b020"]
+      },
+      autumn: {
+        label: "Autumn",
+        vars: {
+          "--bg": "#1c1008",
+          "--bg-strong": "#271608",
+          "--panel": "#221408",
+          "--panel-strong": "#301c0a",
+          "--ink": "#f5e0c8",
+          "--muted": "#b87840",
+          "--line": "#4a2c0e",
+          "--accent": "#e86820",
+          "--accent-soft": "rgba(232, 104, 32, 0.15)",
+          "--danger": "#e04040",
+          "--shadow": "0 18px 40px rgba(0, 0, 0, 0.46)",
+          "--body-top": "#201208",
+          "--body-bottom": "#0e0804",
+          "--body-glow": "rgba(232, 104, 32, 0.22)"
+        },
+        swatches: ["#0e0804", "#221408", "#e86820"]
+      },
+      winter: {
+        label: "Winter",
+        vars: {
+          "--bg": "#eaf2f8",
+          "--bg-strong": "#d4e6f2",
+          "--panel": "#f5fafd",
+          "--panel-strong": "#e0eef8",
+          "--ink": "#0e2030",
+          "--muted": "#4a7090",
+          "--line": "#b0cede",
+          "--accent": "#2e90c8",
+          "--accent-soft": "rgba(46, 144, 200, 0.14)",
+          "--danger": "#c04060",
+          "--shadow": "0 18px 40px rgba(14, 40, 70, 0.12)",
+          "--body-top": "#f0f8fd",
+          "--body-bottom": "#daeaf6",
+          "--body-glow": "rgba(46, 144, 200, 0.18)"
+        },
+        swatches: ["#f0f8fd", "#f5fafd", "#2e90c8"]
+      },
+      midnight: {
+        label: "Midnight",
+        vars: {
+          "--bg": "#080810",
+          "--bg-strong": "#0d0d1a",
+          "--panel": "#0e0e1e",
+          "--panel-strong": "#141428",
+          "--ink": "#c8d0f0",
+          "--muted": "#5060a0",
+          "--line": "#1a1a38",
+          "--accent": "#7080e8",
+          "--accent-soft": "rgba(112, 128, 232, 0.15)",
+          "--danger": "#e05070",
+          "--shadow": "0 18px 40px rgba(0, 0, 0, 0.62)",
+          "--body-top": "#0a0a16",
+          "--body-bottom": "#040408",
+          "--body-glow": "rgba(112, 128, 232, 0.2)"
+        },
+        swatches: ["#040408", "#0e0e1e", "#7080e8"]
+      },
+      sand: {
+        label: "Sand",
+        vars: {
+          "--bg": "#f7f0e0",
+          "--bg-strong": "#ede4cc",
+          "--panel": "#fdfaf2",
+          "--panel-strong": "#f5edda",
+          "--ink": "#3c3018",
+          "--muted": "#8a7850",
+          "--line": "#ddd0a8",
+          "--accent": "#b89840",
+          "--accent-soft": "rgba(184, 152, 64, 0.14)",
+          "--danger": "#b84838",
+          "--shadow": "0 18px 40px rgba(80, 60, 10, 0.12)",
+          "--body-top": "#faf5e6",
+          "--body-bottom": "#ede5cc",
+          "--body-glow": "rgba(184, 152, 64, 0.16)"
+        },
+        swatches: ["#faf5e6", "#fdfaf2", "#b89840"]
+      },
+      custom: {
+        label: "Custom",
+        vars: {
+          "--bg": "#f4efe3",
+          "--bg-strong": "#eadfca",
+          "--panel": "#fffaf0",
+          "--panel-strong": "#f7edd9",
+          "--ink": "#2e2418",
+          "--muted": "#7c6c55",
+          "--line": "#d6c6ab",
+          "--accent": "#b7802f",
+          "--accent-soft": "rgba(183, 128, 47, 0.14)",
+          "--danger": "#b64937",
+          "--shadow": "0 18px 40px rgba(66, 43, 10, 0.12)",
+          "--body-top": "#f8f2e7",
+          "--body-bottom": "#efe5d3",
+          "--body-glow": "rgba(183, 128, 47, 0.18)"
+        },
+        swatches: ["#f8f2e7", "#fffaf0", "#b7802f"]
+      }
+    };
+
+    const EXTRA_COLORS = ["#ae7bcc", "#ce7c39"];
+    const TIME_PRESETS = [180, 300, 600, 900, 1200, 1800];
+    const LOW_TIME_MS = 30000;
+    const AUDIO_SLOTS = [
+      { id: "turn", title: "Clock pass sound", help: "Plays when the active player passes the turn." },
+      { id: "ui", title: "General button sound", help: "Plays for normal buttons and setup actions." },
+      { id: "pause", title: "Pause sound", help: "Plays when the session is paused." },
+      { id: "resume", title: "Resume sound", help: "Plays when the session resumes." },
+      { id: "end", title: "End game sound", help: "Plays when the game is finished." },
+      { id: "settings", title: "Settings sound", help: "Plays when the settings panel is opened." }
+    ];
+    const CUSTOM_THEME_FIELDS = [
+      { key: "--body-top", label: "Background top" },
+      { key: "--body-bottom", label: "Background bottom" },
+      { key: "--panel", label: "Panel" },
+      { key: "--panel-strong", label: "Panel strong" },
+      { key: "--ink", label: "Text" },
+      { key: "--muted", label: "Muted text" },
+      { key: "--line", label: "Border" },
+      { key: "--accent", label: "Accent" },
+      { key: "--danger", label: "Danger" }
+    ];
+
+    let players = [];
+    let turnOrder = [];
+    let orderMode = "custom";
+    let gameMode = "timer";
+    let timePerPlayer = 300;
+    let timeoutBehavior = "skip";
+    let showHundredths = false;
+    let currentTheme = "light";
+    let themeAudioFiles = Object.fromEntries(Object.keys(THEMES).map((key) => [key, {}]));
+
+    let gameRunning = false;
+    let paused = false;
+    let currentTurnIndex = 0;
+    let roundNumber = 1;
+    let playerState = [];
+    let rafId = 0;
+    let lastTick = 0;
+    let autoAdvanceTimer = 0;
+
+    let dragFrom = null;
+
+    const board = document.getElementById("board");
+    const centerTop = document.getElementById("center-top");
+    const centerBottom = document.getElementById("center-bottom");
+
+    function setup() {
+      initPlayers();
+      loadSettings();
+      syncCustomThemeSwatches();
+      buildTimePresetButtons();
+      buildThemeButtons();
+      buildAudioSlots();
+      buildCustomThemeEditor();
+      bindSetupControls();
+      applyTheme(currentTheme);
+      renderSetup();
+    }
+
+    function initPlayers() {
+      players = DEFAULT_PLAYERS.map((player) => ({ ...player }));
+      turnOrder = players.map((_, index) => index);
+    }
+
+    function bindSetupControls() {
+      document.getElementById("add-player-btn").addEventListener("click", addPlayer);
+      document.getElementById("custom-hours").addEventListener("input", handleCustomHms);
+      document.getElementById("custom-minutes").addEventListener("input", handleCustomHms);
+      document.getElementById("custom-seconds").addEventListener("input", handleCustomHms);
+      document.getElementById("ms-toggle").addEventListener("click", toggleHundredths);
+      document.getElementById("mode-timer").addEventListener("click", () => setGameMode("timer"));
+      document.getElementById("mode-stopwatch").addEventListener("click", () => setGameMode("stopwatch"));
+      document.getElementById("timeout-skip").addEventListener("click", () => setTimeoutBehavior("skip"));
+      document.getElementById("timeout-overtime").addEventListener("click", () => setTimeoutBehavior("overtime"));
+      document.getElementById("mode-custom").addEventListener("click", () => setOrderMode("custom"));
+      document.getElementById("mode-cw").addEventListener("click", () => setOrderMode("cw"));
+      document.getElementById("mode-ccw").addEventListener("click", () => setOrderMode("ccw"));
+      document.getElementById("start-btn").addEventListener("click", startGame);
+
+      document.getElementById("pause-btn").addEventListener("click", togglePause);
+      document.getElementById("pass-btn").addEventListener("click", nextTurn);
+      document.getElementById("open-settings-setup").addEventListener("click", openSettings);
+      document.getElementById("open-settings-inline").addEventListener("click", openSettings);
+      document.getElementById("open-settings-game").addEventListener("click", openSettings);
+      document.getElementById("close-settings-btn").addEventListener("click", closeSettings);
+      document.getElementById("close-settings-top-btn").addEventListener("click", closeSettings);
+      document.getElementById("reset-settings-btn").addEventListener("click", resetSettingsDefaults);
+      document.getElementById("end-btn").addEventListener("click", openEndOverlay);
+      document.getElementById("resume-btn").addEventListener("click", togglePause);
+      document.getElementById("cancel-end-btn").addEventListener("click", closeEndOverlay);
+      document.getElementById("confirm-end-btn").addEventListener("click", endGame);
+      document.getElementById("new-game-btn").addEventListener("click", resetApp);
+
+      [
+        "close-settings-btn",
+        "cancel-end-btn",
+        "new-game-btn",
+        "reset-settings-btn"
+      ].forEach((id) => {
+        document.getElementById(id).addEventListener("click", () => playSound("ui"));
+      });
+
+      window.addEventListener("resize", () => {
+        if (gameRunning) {
+          renderBoard();
+        }
+      });
+    }
+
+    function buildTimePresetButtons() {
+      const row = document.getElementById("time-presets");
+      row.innerHTML = "";
+
+      TIME_PRESETS.forEach((seconds) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "chip";
+        button.dataset.seconds = String(seconds);
+        button.textContent = presetLabel(seconds);
+        button.addEventListener("click", () => pickTime(seconds));
+        row.appendChild(button);
+      });
+    }
+
+    function buildThemeButtons() {
+      const grid = document.getElementById("theme-grid");
+      grid.innerHTML = "";
+
+      Object.entries(THEMES).forEach(([key, theme]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "theme-btn";
+        button.dataset.theme = key;
+        button.innerHTML = `
+          <strong>${theme.label}</strong>
+          <div class="theme-swatches">${theme.swatches.map((color) => `<span style="background:${color}"></span>`).join("")}</div>
+        `;
+        button.addEventListener("click", () => {
+          currentTheme = key;
+          applyTheme(key);
+          updateAudioLabels();
+          renderThemeState();
+          renderCustomThemeEditorState();
+          if (gameRunning) renderBoard();
+          updateSettingsSummary();
+          playSound("ui");
+        });
+        grid.appendChild(button);
+      });
+    }
+
+    function buildCustomThemeEditor() {
+      const editor = document.getElementById("custom-theme-editor");
+      editor.innerHTML = "";
+
+      CUSTOM_THEME_FIELDS.forEach((field) => {
+        const row = document.createElement("div");
+        row.className = "color-field";
+        row.innerHTML = `
+          <label for="custom-theme-${field.key}">${field.label}</label>
+          <input id="custom-theme-${field.key}" type="color" value="${rgbaToHex(THEMES.custom.vars[field.key])}">
+        `;
+        const input = row.querySelector("input");
+        input.addEventListener("input", (event) => {
+          THEMES.custom.vars[field.key] = event.target.value;
+          THEMES.custom.vars["--accent-soft"] = hexToRgba(THEMES.custom.vars["--accent"], 0.14);
+          THEMES.custom.vars["--body-glow"] = hexToRgba(THEMES.custom.vars["--accent"], 0.18);
+          syncCustomThemeSwatches();
+          buildThemeButtons();
+          renderThemeState();
+          if (currentTheme === "custom") {
+            applyTheme("custom");
+            if (gameRunning) renderBoard();
+          }
+          updateSettingsSummary();
+        });
+        editor.appendChild(row);
+      });
+    }
+
+    function buildAudioSlots() {
+      const slots = document.getElementById("audio-slots");
+      slots.innerHTML = "";
+
+      AUDIO_SLOTS.forEach((slot) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "file-slot";
+        wrapper.innerHTML = `
+          <div class="file-slot-top">
+            <div>
+              <strong>${slot.title}</strong>
+              <small>${slot.help}</small>
+            </div>
+            <span id="audio-name-${slot.id}">No file</span>
+          </div>
+          <input id="audio-input-${slot.id}" type="file" accept="audio/*" hidden>
+          <div class="file-actions">
+            <button class="mini-btn" id="audio-pick-${slot.id}" type="button">Choose Audio</button>
+            <button class="mini-btn" id="audio-test-${slot.id}" type="button">Test</button>
+            <button class="mini-btn" id="audio-clear-${slot.id}" type="button">Clear</button>
+          </div>
+        `;
+
+        slots.appendChild(wrapper);
+
+        const input = wrapper.querySelector(`#audio-input-${slot.id}`);
+        wrapper.querySelector(`#audio-pick-${slot.id}`).addEventListener("click", () => input.click());
+        wrapper.querySelector(`#audio-test-${slot.id}`).addEventListener("click", () => playSound(slot.id));
+        wrapper.querySelector(`#audio-clear-${slot.id}`).addEventListener("click", () => clearAudio(slot.id));
+
+        input.addEventListener("change", (event) => {
+          const file = event.target.files?.[0];
+          if (!file) return;
+          const currentProfile = getCurrentThemeAudioProfile();
+          if (currentProfile[slot.id]?.url) URL.revokeObjectURL(currentProfile[slot.id].url);
+          currentProfile[slot.id] = {
+            name: file.name,
+            url: URL.createObjectURL(file)
+          };
+          updateAudioLabels();
+          updateSettingsSummary();
+        });
+      });
+    }
+
+    function presetLabel(seconds) {
+      const minutes = Math.round(seconds / 60);
+      return minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`;
+    }
+
+    function renderSetup() {
+      renderPlayerRows();
+      renderGameModeState();
+      renderTimeState();
+      renderTimeoutBehaviorState();
+      renderToggleState();
+      renderOrderModeState();
+      renderOrderList();
+      renderThemeState();
+      renderCustomThemeEditorState();
+      updateAudioLabels();
+      updateSettingsSummary();
+      saveSettings();
+    }
+
+    function renderPlayerRows() {
+      const rows = document.getElementById("player-rows");
+      rows.innerHTML = "";
+
+      players.forEach((player, index) => {
+        const row = document.createElement("div");
+        row.className = "player-row";
+        row.innerHTML = `
+          <label class="swatch" style="background:${player.color}">
+            <input type="color" value="${player.color}" aria-label="Player ${index + 1} color">
+          </label>
+          <input class="name-input" type="text" value="${escapeAttribute(player.name)}" placeholder="Player ${index + 1}">
+          <button class="icon-btn" type="button" aria-label="Remove player">×</button>
+        `;
+
+        const colorInput = row.querySelector('input[type="color"]');
+        const nameInput = row.querySelector(".name-input");
+        const removeBtn = row.querySelector(".icon-btn");
+
+        colorInput.addEventListener("input", (event) => {
+          players[index].color = event.target.value;
+          renderSetup();
+        });
+
+        nameInput.addEventListener("input", (event) => {
+          const nextName = event.target.value.trim();
+          players[index].name = nextName || `Player ${index + 1}`;
+          renderOrderList();
+        });
+
+        removeBtn.addEventListener("click", () => removePlayer(index));
+        removeBtn.disabled = players.length <= 2;
+
+        rows.appendChild(row);
+      });
+
+      document.getElementById("add-player-btn").style.display = players.length >= 6 ? "none" : "block";
+    }
+
+    function addPlayer() {
+      if (players.length >= 6) return;
+
+      const index = players.length;
+      const color = EXTRA_COLORS[index - DEFAULT_PLAYERS.length] || "#8a8a8a";
+      players.push({ name: `Player ${index + 1}`, color });
+      syncTurnOrderAfterRosterChange();
+      playSound("ui");
+      renderSetup();
+    }
+
+    function removePlayer(index) {
+      if (players.length <= 2) return;
+
+      players.splice(index, 1);
+      syncTurnOrderAfterRosterChange();
+      playSound("ui");
+      renderSetup();
+    }
+
+    function syncTurnOrderAfterRosterChange() {
+      turnOrder = players.map((_, index) => index);
+      if (orderMode === "ccw") {
+        turnOrder.reverse();
+      }
+    }
+
+    function pickTime(seconds) {
+      timePerPlayer = seconds;
+      document.getElementById("custom-hours").value = "";
+      document.getElementById("custom-minutes").value = "";
+      document.getElementById("custom-seconds").value = "";
+      playSound("ui");
+      renderTimeState();
+    }
+
+    function handleCustomHms() {
+      const h = Math.max(0, parseInt(document.getElementById("custom-hours").value) || 0);
+      const m = Math.max(0, parseInt(document.getElementById("custom-minutes").value) || 0);
+      const s = Math.max(0, parseInt(document.getElementById("custom-seconds").value) || 0);
+      const total = h * 3600 + m * 60 + s;
+      if (total < 1) return;
+      timePerPlayer = total;
+      // Deselect presets when custom is typed
+      document.querySelectorAll("#time-presets .chip").forEach((chip) => chip.classList.remove("on"));
+    }
+
+    function renderTimeState() {
+      document.getElementById("time-bank-section").style.display = gameMode === "timer" ? "grid" : "none";
+      document.querySelectorAll("#time-presets .chip").forEach((chip) => {
+        chip.classList.toggle("on", Number(chip.dataset.seconds) === timePerPlayer);
+      });
+    }
+
+    function setTimeoutBehavior(mode) {
+      timeoutBehavior = mode;
+      playSound("ui");
+      renderTimeoutBehaviorState();
+    }
+
+    function renderTimeoutBehaviorState() {
+      document.getElementById("timeout-behavior-section").style.display = gameMode === "timer" ? "grid" : "none";
+      document.getElementById("timeout-skip").classList.toggle("on", timeoutBehavior === "skip");
+      document.getElementById("timeout-overtime").classList.toggle("on", timeoutBehavior === "overtime");
+    }
+
+    function setGameMode(mode) {
+      gameMode = mode;
+      playSound("ui");
+      renderGameModeState();
+      renderTimeState();
+      renderTimeoutBehaviorState();
+    }
+
+    function renderGameModeState() {
+      document.getElementById("mode-timer").classList.toggle("on", gameMode === "timer");
+      document.getElementById("mode-stopwatch").classList.toggle("on", gameMode === "stopwatch");
+      document.getElementById("start-btn").textContent = gameMode === "timer" ? "Start Timer" : "Start Stopwatch";
+      document.querySelector("#end-overlay p").textContent = gameMode === "timer"
+        ? "Stop the timer and view the remaining time for each player."
+        : "Stop the stopwatch and view the elapsed time for each player.";
+    }
+
+    function renderThemeState() {
+      document.querySelectorAll(".theme-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.theme === currentTheme);
+      });
+    }
+
+    function renderCustomThemeEditorState() {
+      document.getElementById("custom-theme-editor").classList.toggle("show", currentTheme === "custom");
+      CUSTOM_THEME_FIELDS.forEach((field) => {
+        const input = document.getElementById(`custom-theme-${field.key}`);
+        if (input) input.value = rgbaToHex(THEMES.custom.vars[field.key]);
+      });
+    }
+
+    function toggleHundredths() {
+      showHundredths = !showHundredths;
+      playSound("ui");
+      renderToggleState();
+      updateSettingsSummary();
+    }
+
+    function renderToggleState() {
+      document.getElementById("ms-switch").classList.toggle("on", showHundredths);
+    }
+
+    function openSettings() {
+      playSound("settings");
+      document.getElementById("settings-overlay").classList.add("show");
+    }
+
+    function closeSettings() {
+      document.getElementById("settings-overlay").classList.remove("show");
+    }
+
+    function applyTheme(themeKey) {
+      const theme = THEMES[themeKey];
+      if (!theme) return;
+      Object.entries(theme.vars).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(key, value);
+      });
+      currentTheme = themeKey;
+    }
+
+    function syncCustomThemeSwatches() {
+      THEMES.custom.swatches = [
+        THEMES.custom.vars["--body-top"],
+        THEMES.custom.vars["--panel"],
+        THEMES.custom.vars["--accent"]
+      ];
+    }
+
+    function getCurrentThemeAudioProfile() {
+      if (!themeAudioFiles[currentTheme]) themeAudioFiles[currentTheme] = {};
+      return themeAudioFiles[currentTheme];
+    }
+
+    function updateAudioLabels() {
+      const profile = getCurrentThemeAudioProfile();
+      AUDIO_SLOTS.forEach((slot) => {
+        const label = document.getElementById(`audio-name-${slot}`);
+        const value = profile[slot.id];
+        if (label) label.textContent = value?.name || defaultAudioSuggestion(currentTheme, slot.id);
+      });
+    }
+
+    function clearAudio(slot) {
+      const profile = getCurrentThemeAudioProfile();
+      if (profile[slot]?.url) URL.revokeObjectURL(profile[slot].url);
+      profile[slot] = null;
+      const input = document.getElementById(`audio-input-${slot}`);
+      if (input) input.value = "";
+      updateAudioLabels();
+      updateSettingsSummary();
+    }
+
+    function playSound(slot) {
+      const file = getCurrentThemeAudioProfile()[slot];
+      if (!file?.url) return;
+      const audio = new Audio(file.url);
+      audio.volume = 0.8;
+      audio.play().catch(() => {});
+    }
+
+    function updateSettingsSummary() {
+      const themeLabel = THEMES[currentTheme]?.label || "Theme";
+      const hundredthsLabel = showHundredths ? "hundredths on" : "hundredths off";
+      const profile = getCurrentThemeAudioProfile();
+      const assignedCount = AUDIO_SLOTS.filter((slot) => profile[slot.id]?.url).length;
+      document.getElementById("settings-summary-text").textContent =
+        `${themeLabel} theme, ${hundredthsLabel}, ${assignedCount} custom sound${assignedCount === 1 ? "" : "s"} in this theme.`;
+    }
+
+    function resetSettingsDefaults() {
+      Object.values(themeAudioFiles).forEach((profile) => {
+        Object.values(profile).forEach((value) => {
+          if (value?.url) URL.revokeObjectURL(value.url);
+        });
+      });
+      themeAudioFiles = Object.fromEntries(Object.keys(THEMES).map((key) => [key, {}]));
+      THEMES.custom.vars = { ...THEMES.light.vars };
+      syncCustomThemeSwatches();
+      showHundredths = false;
+      currentTheme = "light";
+      applyTheme("light");
+      buildThemeButtons();
+      buildCustomThemeEditor();
+      renderSetup();
+      if (gameRunning) renderBoard();
+    }
+
+    function defaultAudioSuggestion(themeKey, slotId) {
+      return `Suggested: ${themeKey}-${slotId}.mp3`;
+    }
+
+    function setOrderMode(mode) {
+      orderMode = mode;
+      playSound("ui");
+
+      if (mode === "cw") {
+        turnOrder = players.map((_, index) => index);
+      } else if (mode === "ccw") {
+        turnOrder = players.map((_, index) => players.length - 1 - index);
+      } else if (turnOrder.length !== players.length) {
+        turnOrder = players.map((_, index) => index);
+      }
+
+      renderOrderModeState();
+      renderOrderList();
+    }
+
+    function renderOrderModeState() {
+      document.getElementById("mode-custom").classList.toggle("on", orderMode === "custom");
+      document.getElementById("mode-cw").classList.toggle("on", orderMode === "cw");
+      document.getElementById("mode-ccw").classList.toggle("on", orderMode === "ccw");
+    }
+
+    function renderOrderList() {
+      const list = document.getElementById("order-list");
+      list.innerHTML = "";
+
+      if (turnOrder.length !== players.length) {
+        turnOrder = players.map((_, index) => index);
+      }
+
+      turnOrder.forEach((playerIndex, orderIndex) => {
+        const player = players[playerIndex];
+        const item = document.createElement("div");
+        item.className = "order-item";
+        item.draggable = orderMode === "custom";
+        item.dataset.position = String(orderIndex);
+        item.innerHTML = `
+          <span class="order-handle">${orderMode === "custom" ? "⠿" : "•"}</span>
+          <span class="order-index">${orderIndex + 1}.</span>
+          <span class="order-dot" style="background:${player.color}"></span>
+          <span class="order-name">${escapeHtml(player.name)}</span>
+        `;
+
+        if (orderMode === "custom") {
+          enableDragBehavior(item, orderIndex);
+        } else {
+          item.style.cursor = "default";
+        }
+
+        list.appendChild(item);
+      });
+    }
+
+    function enableDragBehavior(item, orderIndex) {
+      item.addEventListener("dragstart", () => {
+        dragFrom = orderIndex;
+        setTimeout(() => item.classList.add("dragging"), 0);
+      });
+
+      item.addEventListener("dragend", () => {
+        item.classList.remove("dragging");
+      });
+
+      item.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        item.classList.add("drag-over");
+      });
+
+      item.addEventListener("dragleave", () => {
+        item.classList.remove("drag-over");
+      });
+
+      item.addEventListener("drop", (event) => {
+        event.preventDefault();
+        item.classList.remove("drag-over");
+        if (dragFrom === null || dragFrom === orderIndex) return;
+        swapTurnOrder(dragFrom, orderIndex);
+      });
+
+      item.addEventListener("touchstart", () => {
+        dragFrom = orderIndex;
+      }, { passive: true });
+
+      item.addEventListener("touchmove", (event) => {
+        event.preventDefault();
+        const touch = event.touches[0];
+        if (!touch) return;
+
+        for (const element of document.elementsFromPoint(touch.clientX, touch.clientY)) {
+          const target = element.closest(".order-item");
+          if (!target || target === item) continue;
+          const toIndex = Number(target.dataset.position);
+          if (!Number.isNaN(toIndex) && toIndex !== dragFrom) {
+            swapTurnOrder(orderIndex, toIndex);
+            break;
+          }
+        }
+      }, { passive: false });
+    }
+
+    function swapTurnOrder(from, to) {
+      [turnOrder[from], turnOrder[to]] = [turnOrder[to], turnOrder[from]];
+      renderOrderList();
+    }
+
+    function startGame() {
+      if (players.length < 2) return;
+
+      document.getElementById("setup-screen").style.display = "none";
+      document.getElementById("game-screen").style.display = "block";
+
+      playerState = players.map(() => ({
+        timeMs: gameMode === "timer" ? timePerPlayer * 1000 : 0,
+        out: false
+      }));
+
+      currentTurnIndex = 0;
+      roundNumber = 1;
+      paused = false;
+      gameRunning = true;
+      lastTick = performance.now();
+      clearTimeout(autoAdvanceTimer);
+
+      document.addEventListener("keydown", handleKeydown);
+      renderBoard();
+      updateCenterHud();
+      activateCurrentPanel();
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function tick(now) {
+      if (!gameRunning) return;
+
+      const delta = now - lastTick;
+      lastTick = now;
+
+      if (!paused) {
+        const playerIndex = turnOrder[currentTurnIndex];
+        const state = playerState[playerIndex];
+
+        if (state && !state.out) {
+          if (gameMode === "timer") {
+            if (timeoutBehavior === "skip") {
+              state.timeMs = Math.max(0, state.timeMs - delta);
+            } else {
+              state.timeMs -= delta;
+            }
+          } else {
+            state.timeMs += delta;
+          }
+          refreshPanel(playerIndex);
+
+          if (gameMode === "timer" && state.timeMs <= LOW_TIME_MS) {
+            document.getElementById(`panel-${playerIndex}`)?.classList.add("low");
+          }
+
+          if (gameMode === "timer" && timeoutBehavior === "skip" && state.timeMs <= 0 && !state.out) {
+            state.out = true;
+            const panel = document.getElementById(`panel-${playerIndex}`);
+            panel?.classList.add("out");
+
+            clearTimeout(autoAdvanceTimer);
+            autoAdvanceTimer = setTimeout(() => {
+              if (gameRunning) nextTurn();
+            }, 1400);
+          } else if (gameMode === "timer" && timeoutBehavior === "overtime" && state.timeMs < 0) {
+            document.getElementById(`panel-${playerIndex}`)?.classList.add("over");
+          }
+        }
+      }
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function renderBoard() {
+      board.innerHTML = "";
+
+      const layout = getLayout(players.length, window.innerWidth, window.innerHeight);
+
+      players.forEach((player, index) => {
+        const rect = layout.positions[index];
+        const panel = document.createElement("button");
+        panel.type = "button";
+        panel.id = `panel-${index}`;
+        panel.className = "timer-panel";
+        if (rect.rotate) panel.classList.add("panel-rotated");
+        panel.style.left = `${rect.x}px`;
+        panel.style.top = `${rect.y}px`;
+        panel.style.width = `${rect.w}px`;
+        panel.style.height = `${rect.h}px`;
+
+        const base = colorMix(player.color, "#ffffff", 0.7);
+        const edge = colorMix(player.color, "#c9b9a0", 0.58);
+
+        panel.innerHTML = `
+          <div class="panel-inner" style="background:linear-gradient(180deg, ${base}, ${edge})">
+            <div class="panel-player caps">${escapeHtml(player.name)}</div>
+            <div class="time-main" id="time-main-${index}">${formatTime(playerState[index].timeMs)}</div>
+            <div class="time-ms" id="time-ms-${index}">${showHundredths ? "." + formatHundredths(playerState[index].timeMs) : ""}</div>
+            <div class="panel-status caps" id="status-${index}"></div>
+          </div>
+        `;
+
+        panel.addEventListener("click", () => {
+          if (!gameRunning || paused) return;
+          if (turnOrder[currentTurnIndex] !== index) return;
+          nextTurn();
+        });
+
+        board.appendChild(panel);
+      });
+
+      layout.dividers.forEach((divider) => {
+        const element = document.createElement("div");
+        element.className = `divider ${divider.type}`;
+        if (divider.type === "h") {
+          element.style.top = `${divider.at}px`;
+        } else {
+          element.style.left = `${divider.at}px`;
+        }
+        board.appendChild(element);
+      });
+
+      players.forEach((_, index) => refreshPanel(index));
+      activateCurrentPanel();
+    }
+
+    function getLayout(count, width, height) {
+      const halfW = width / 2;
+      const halfH = height / 2;
+      const thirdW = width / 3;
+      const thirdH = height / 3;
+      const positions = [];
+      const dividers = [];
+
+      if (count === 2) {
+        positions.push(
+          { x: 0, y: 0, w: width, h: halfH, rotate: false },
+          { x: 0, y: halfH, w: width, h: halfH, rotate: true }
+        );
+        dividers.push({ type: "h", at: halfH });
+      } else if (count === 3) {
+        positions.push(
+          { x: 0, y: 0, w: width, h: halfH, rotate: false },
+          { x: 0, y: halfH, w: halfW, h: halfH, rotate: false },
+          { x: halfW, y: halfH, w: halfW, h: halfH, rotate: false }
+        );
+        dividers.push({ type: "h", at: halfH }, { type: "v", at: halfW });
+      } else if (count === 4) {
+        positions.push(
+          { x: 0, y: 0, w: halfW, h: halfH, rotate: false },
+          { x: halfW, y: 0, w: halfW, h: halfH, rotate: false },
+          { x: 0, y: halfH, w: halfW, h: halfH, rotate: false },
+          { x: halfW, y: halfH, w: halfW, h: halfH, rotate: false }
+        );
+        dividers.push({ type: "h", at: halfH }, { type: "v", at: halfW });
+      } else if (count === 5) {
+        positions.push(
+          { x: 0, y: 0, w: halfW, h: halfH, rotate: false },
+          { x: halfW, y: 0, w: halfW, h: halfH, rotate: false },
+          { x: 0, y: halfH, w: thirdW, h: halfH, rotate: false },
+          { x: thirdW, y: halfH, w: thirdW, h: halfH, rotate: false },
+          { x: thirdW * 2, y: halfH, w: thirdW, h: halfH, rotate: false }
+        );
+        dividers.push(
+          { type: "h", at: halfH },
+          { type: "v", at: halfW },
+          { type: "v", at: thirdW },
+          { type: "v", at: thirdW * 2 }
+        );
+      } else if (count === 6) {
+        positions.push(
+          { x: 0, y: 0, w: thirdW, h: halfH, rotate: false },
+          { x: thirdW, y: 0, w: thirdW, h: halfH, rotate: false },
+          { x: thirdW * 2, y: 0, w: thirdW, h: halfH, rotate: false },
+          { x: 0, y: halfH, w: thirdW, h: halfH, rotate: false },
+          { x: thirdW, y: halfH, w: thirdW, h: halfH, rotate: false },
+          { x: thirdW * 2, y: halfH, w: thirdW, h: halfH, rotate: false }
+        );
+        dividers.push(
+          { type: "h", at: halfH },
+          { type: "v", at: thirdW },
+          { type: "v", at: thirdW * 2 }
+        );
+      } else {
+        const rows = Math.ceil(count / 2);
+        for (let index = 0; index < count; index += 1) {
+          const col = index % 2;
+          const row = Math.floor(index / 2);
+          positions.push({
+            x: col * halfW,
+            y: row * (height / rows),
+            w: halfW,
+            h: height / rows,
+            rotate: false
+          });
+        }
+        for (let row = 1; row < rows; row += 1) {
+          dividers.push({ type: "h", at: row * (height / rows) });
+        }
+        dividers.push({ type: "v", at: halfW });
+      }
+
+      return { positions, dividers };
+    }
+
+    function refreshPanel(playerIndex) {
+      const state = playerState[playerIndex];
+      const main = document.getElementById(`time-main-${playerIndex}`);
+      const ms = document.getElementById(`time-ms-${playerIndex}`);
+      const status = document.getElementById(`status-${playerIndex}`);
+      if (!main || !ms || !status) return;
+
+      main.textContent = formatTime(state.timeMs);
+      ms.textContent = showHundredths ? "." + formatHundredths(state.timeMs) : "";
+
+      if (gameMode === "timer" && state.out) {
+        status.textContent = "Time out";
+      } else if (gameMode === "timer" && timeoutBehavior === "overtime" && state.timeMs < 0) {
+        status.textContent = "Overtime";
+      } else if (turnOrder[currentTurnIndex] === playerIndex) {
+        status.textContent = "Tap to pass";
+      } else if (gameMode === "stopwatch") {
+        status.textContent = "Elapsed";
+      } else {
+        status.textContent = "";
+      }
+    }
+
+    function activateCurrentPanel() {
+      document.querySelectorAll(".timer-panel").forEach((panel) => {
+        panel.classList.remove("active");
+      });
+
+      const playerIndex = turnOrder[currentTurnIndex];
+      const panel = document.getElementById(`panel-${playerIndex}`);
+      panel?.classList.add("active");
+
+      players.forEach((_, index) => refreshPanel(index));
+    }
+
+    function nextTurn() {
+      if (!gameRunning) return;
+
+      clearTimeout(autoAdvanceTimer);
+      playSound("turn");
+
+      let tries = 0;
+      do {
+        currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
+        if (currentTurnIndex === 0) roundNumber += 1;
+        tries += 1;
+        if (tries > turnOrder.length) {
+          endGame();
+          return;
+        }
+      } while (playerState[turnOrder[currentTurnIndex]].out);
+
+      updateCenterHud();
+      activateCurrentPanel();
+    }
+
+    function updateCenterHud() {
+      centerTop.textContent = `Round ${roundNumber}`;
+      centerBottom.textContent = `${players[turnOrder[currentTurnIndex]].name}'s turn`;
+    }
+
+    function togglePause() {
+      if (!gameRunning) return;
+
+      paused = !paused;
+      document.getElementById("pause-overlay").classList.toggle("show", paused);
+      document.getElementById("pause-btn").textContent = paused ? "Resume" : "Pause";
+
+      if (paused) {
+        playSound("pause");
+      } else {
+        playSound("resume");
+      }
+
+      if (!paused) {
+        lastTick = performance.now();
+      }
+    }
+
+    function openEndOverlay() {
+      paused = true;
+      document.getElementById("pause-btn").textContent = "Resume";
+      document.getElementById("end-overlay").classList.add("show");
+    }
+
+    function closeEndOverlay() {
+      document.getElementById("end-overlay").classList.remove("show");
+      paused = false;
+      lastTick = performance.now();
+    }
+
+    function endGame() {
+      playSound("end");
+      gameRunning = false;
+      paused = false;
+      clearTimeout(autoAdvanceTimer);
+      cancelAnimationFrame(rafId);
+      document.removeEventListener("keydown", handleKeydown);
+      document.getElementById("end-overlay").classList.remove("show");
+      document.getElementById("pause-overlay").classList.remove("show");
+      document.getElementById("pause-btn").textContent = "Pause";
+      showFinalSummary();
+    }
+
+    function showFinalSummary() {
+      const list = document.getElementById("final-list");
+      list.innerHTML = "";
+      const summaryTitle = document.querySelector("#final-overlay h2");
+      const summaryText = document.querySelector("#final-overlay p");
+
+      [...players.keys()]
+        .map((index) => ({
+          name: players[index].name,
+          color: players[index].color,
+          timeMs: playerState[index].timeMs
+        }))
+        .sort((a, b) => gameMode === "timer" ? b.timeMs - a.timeMs : a.timeMs - b.timeMs)
+        .forEach((entry) => {
+          const row = document.createElement("div");
+          row.className = "modal-row";
+          row.innerHTML = `
+            <span class="modal-dot" style="background:${entry.color}"></span>
+            <span class="modal-name">${escapeHtml(entry.name)}</span>
+            <span class="modal-time">${formatTime(entry.timeMs)} ${gameMode === "timer" ? "remaining" : "elapsed"}</span>
+          `;
+          list.appendChild(row);
+        });
+
+      summaryTitle.textContent = gameMode === "timer" ? "Time Summary" : "Stopwatch Summary";
+      summaryText.textContent = gameMode === "timer"
+        ? "Remaining time at the end of the game."
+        : "Elapsed time at the end of the session.";
+      document.getElementById("final-overlay").classList.add("show");
+    }
+
+    function resetApp() {
+      location.reload();
+    }
+
+    function handleKeydown(event) {
+      if (!gameRunning) return;
+
+      if (event.code === "Space" || event.code === "Enter") {
+        event.preventDefault();
+        if (!paused) nextTurn();
+      }
+
+      if (event.code === "Escape" || event.code === "KeyP") {
+        event.preventDefault();
+        togglePause();
+      }
+    }
+
+    function formatTime(ms) {
+      const negative = ms < 0;
+      const absMs = Math.abs(ms);
+      const totalSeconds = Math.floor(absMs / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const sign = negative ? "-" : "";
+      if (hours > 0) {
+        return `${sign}${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+      }
+      return `${sign}${minutes}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    function formatHundredths(ms) {
+      return String(Math.floor((Math.abs(ms) % 1000) / 10)).padStart(2, "0");
+    }
+
+    function colorMix(hexA, hexB, weightA) {
+      const a = hexToRgb(hexA);
+      const b = hexToRgb(hexB);
+      const weightB = 1 - weightA;
+      const mixed = {
+        r: Math.round(a.r * weightA + b.r * weightB),
+        g: Math.round(a.g * weightA + b.g * weightB),
+        b: Math.round(a.b * weightA + b.b * weightB)
+      };
+      return `rgb(${mixed.r}, ${mixed.g}, ${mixed.b})`;
+    }
+
+    function hexToRgb(hex) {
+      if (hex.startsWith("rgb")) {
+        const parts = hex.match(/[\d.]+/g)?.map(Number) || [0, 0, 0];
+        return { r: parts[0] || 0, g: parts[1] || 0, b: parts[2] || 0 };
+      }
+      const clean = hex.replace("#", "");
+      const value = clean.length === 3
+        ? clean.split("").map((char) => char + char).join("")
+        : clean;
+
+      return {
+        r: parseInt(value.slice(0, 2), 16),
+        g: parseInt(value.slice(2, 4), 16),
+        b: parseInt(value.slice(4, 6), 16)
+      };
+    }
+
+    function hexToRgba(hex, alpha) {
+      const { r, g, b } = hexToRgb(hex);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function rgbaToHex(color) {
+      if (color.startsWith("#")) return color;
+      const { r, g, b } = hexToRgb(color);
+      return `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function escapeAttribute(value) {
+      return escapeHtml(value);
+    }
+
+    function saveSettings() {
+      try {
+        localStorage.setItem("scrabble_settings", JSON.stringify({
+          players,
+          timePerPlayer,
+          orderMode,
+          gameMode,
+          timeoutBehavior,
+          showHundredths,
+          currentTheme,
+          turnOrder,
+        }));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem("scrabble_settings");
+        if (!raw) return;
+        let s;
+        
+        try {
+          s = JSON.parse(raw);
+        } catch (err) {
+          console.error("Corrupted settings:", err);
+          localStorage.removeItem("scrabble_settings");
+          return;
+        }
+        if (Array.isArray(s.players) && s.players.length >= 2) players = s.players;
+        if (typeof s.timePerPlayer === "number") timePerPlayer = s.timePerPlayer;
+        if (s.orderMode) orderMode = s.orderMode;
+        if (s.gameMode) gameMode = s.gameMode;
+        if (s.timeoutBehavior) timeoutBehavior = s.timeoutBehavior;
+        if (typeof s.showHundredths === "boolean") showHundredths = s.showHundredths;
+        if (s.currentTheme && THEMES[s.currentTheme]) currentTheme = s.currentTheme;
+        if (Array.isArray(s.turnOrder)) turnOrder = s.turnOrder;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    setup();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
