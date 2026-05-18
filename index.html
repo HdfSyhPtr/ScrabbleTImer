@@ -2367,10 +2367,15 @@
               clearTimeout(autoAdvanceTimer);
               autoAdvanceTimer = setTimeout(() => { if (gameRunning) nextTurn(true); }, 1400);
             } else if (timeoutBehavior === "skip-turn") {
-              // Auto-skip this turn but player is NOT eliminated; reset their time for per-turn
-              state.timeMs = 0; // pin at 0 so it doesn't keep firing
+              state.out = true; // temporarily block re-firing
+              state.timeMs = 0;
               clearTimeout(autoAdvanceTimer);
-              autoAdvanceTimer = setTimeout(() => { if (gameRunning) nextTurn(true); }, 1400);
+              autoAdvanceTimer = setTimeout(() => {
+                if (gameRunning) {
+                  state.out = false; // un-eliminate before advancing so they come back next round
+                  nextTurn(true);
+                }
+              }, 1400);
             } else if (timeoutBehavior === "overtime") {
               document.getElementById(`panel-${playerIndex}`)?.classList.add("over");
             }
