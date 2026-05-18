@@ -1939,7 +1939,8 @@
     }
 
     function renderIncrementState() {
-      document.getElementById("increment-section").style.display = gameMode === "timer" ? "grid" : "none";
+      document.getElementById("increment-section").style.display =
+        (gameMode === "timer" && timeScope === "match") ? "grid" : "none";
       
       document.querySelectorAll("#increment-presets .chip").forEach((chip) => {
         chip.classList.toggle("on", Number(chip.dataset.seconds) === incrementSeconds);
@@ -2040,7 +2041,7 @@
     function setTimeScope(scope) {
       timeScope = scope;
       playSound("ui");
-      
+
       // Safety feature: if we switch back to 'match', and had 'skip-turn' selected,
       // fallback to 'eliminate' so it doesn't get stuck on a hidden option
       if (timeScope !== "turn" && timeoutBehavior === "skip-turn") {
@@ -2049,6 +2050,7 @@
 
       renderScopeState();
       renderTimeoutBehaviorState();
+      renderIncrementState();
       saveSettings();
     }
 
