@@ -346,19 +346,20 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 14px 16px;
-      border-radius: 18px;
+      padding: 9px 12px;
+      border-radius: 12px;
       border: 1px solid var(--line);
       background: rgba(255,255,255,0.56);
+      width: 100%;
     }
 
     .toggle-copy {
-      display: grid;
-      gap: 4px;
+      display: flex;
+      align-items: center;
     }
 
     .toggle-copy strong {
-      font-size: 1rem;
+      font-size: 0.9rem;
       font-weight: 600;
     }
 
@@ -369,8 +370,8 @@
     }
 
     .switch {
-      width: 58px;
-      height: 34px;
+      width: 44px;
+      height: 26px;
       border-radius: 999px;
       background: #d8c8af;
       position: relative;
@@ -381,10 +382,10 @@
     .switch::after {
       content: "";
       position: absolute;
-      top: 4px;
-      left: 4px;
-      width: 26px;
-      height: 26px;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
       background: #fff9ef;
       box-shadow: 0 2px 8px rgba(47, 30, 7, 0.2);
@@ -396,7 +397,7 @@
     }
 
     .switch.on::after {
-      left: 28px;
+      left: 21px;
     }
 
     .order-list {
@@ -574,6 +575,32 @@
 
     .timer-panel.out .panel-status {
       color: #7d2014;
+    }
+
+    .panel-history {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      margin-top: 6px;
+      min-height: 1em;
+    }
+
+    .panel-history-item {
+      font-family: "Courier New", monospace;
+      font-size: clamp(0.62rem, 1.2vw, 0.88rem);
+      color: rgba(46, 36, 24, 0.5);
+      letter-spacing: 0.02em;
+    }
+
+    .timer-panel.waiting-confirm .panel-inner {
+      outline: 3px solid var(--accent);
+      outline-offset: -3px;
+      border-radius: 4px;
+    }
+
+    .timer-panel.waiting-confirm .panel-status {
+      color: var(--accent);
     }
 
     .panel-rotated .panel-inner {
@@ -1042,7 +1069,7 @@
             <button id="open-settings-setup" class="settings-btn caps" type="button">Settings</button>
           </div>
         </div>
-        <h1>Scrabble timer,<br>nothing extra.</h1>
+        <h1>Scrabble timer,<br>and much more.</h1>
       </section>
 
       <section class="card">
@@ -1052,11 +1079,15 @@
           <button id="add-player-btn" class="ghost-btn caps" type="button">Add Player</button>
         </div>
 
-        <div class="section-block">
+        <div class="section-block" id="mode-block">
           <div class="section-title caps">Mode</div>
           <div class="chip-row">
             <button class="toggle-btn on" id="mode-timer" type="button">Timer</button>
             <button class="toggle-btn" id="mode-stopwatch" type="button">Stopwatch</button>
+          </div>
+          <div class="chip-row" id="scope-row">
+            <button class="toggle-btn on" id="scope-match" type="button">Per Match</button>
+            <button class="toggle-btn" id="scope-turn" type="button">Per Turn</button>
           </div>
         </div>
 
@@ -1083,15 +1114,21 @@
         <div class="section-block" id="timeout-behavior-section">
           <div class="section-title caps">After Time Runs Out</div>
           <div class="chip-row">
-            <button class="toggle-btn on" id="timeout-skip" type="button">Skip Player</button>
-            <button class="toggle-btn" id="timeout-overtime" type="button">Allow Overtime</button>
+            <button class="toggle-btn on" id="timeout-eliminate" type="button">Eliminate</button>
+            <button class="toggle-btn" id="timeout-skip-turn" type="button">Skip Turn</button>
+            <button class="toggle-btn" id="timeout-overtime" type="button">Overtime</button>
           </div>
         </div>
 
-        <div class="section-block">
-          <div class="section-title caps">Settings</div>
-          <div class="settings-summary">
-            <button id="open-settings-inline" class="settings-btn caps" type="button">Open Settings</button>
+        <div class="section-block" id="increment-section">
+          <div class="section-title caps">Increment</div>
+          <div class="chip-row" id="increment-presets"></div>
+          <div class="custom-hms-row">
+            <label class="hms-field">
+              <input id="increment-seconds" type="number" min="0" max="300" inputmode="numeric" placeholder="0">
+              <span class="caps hms-unit">s</span>
+            </label>
+            <span class="caps hms-label">custom increment (added after turn)</span>
           </div>
         </div>
 
@@ -1134,25 +1171,33 @@
         <h2 style="font-size:1.4rem;line-height:1">Settings</h2>
         <div style="width:72px"></div>
       </div>
-      <p>Preset themes, optional sounds, and small display tweaks live here instead of on the main screen.</p>
       <div class="settings-grid">
         <section class="settings-card">
           <h3>Themes</h3>
           <p>Switch the app mood depending on the room, table, or game.</p>
           <div id="theme-grid" class="theme-grid"></div>
         </section>
-        <section class="settings-card">
+        <section class="settings-card" id="custom-theme-card" style="display:none">
           <h3>Custom Theme</h3>
-          <p>Pick your own palette when none of the presets fits.</p>
           <div id="custom-theme-editor" class="custom-theme-editor"></div>
         </section>
         <section class="settings-card">
           <h3>Display</h3>
           <button id="ms-toggle" class="toggle-line" type="button">
-            <span class="toggle-copy">
-              <strong>Show hundredths</strong>
-            </span>
+            <span class="toggle-copy"><strong>Show hundredths</strong></span>
             <span id="ms-switch" class="switch" aria-hidden="true"></span>
+          </button>
+          <button id="fmt-toggle" class="toggle-line" type="button">
+            <span class="toggle-copy"><strong>Show time in seconds</strong></span>
+            <span id="fmt-switch" class="switch" aria-hidden="true"></span>
+          </button>
+          <button id="history-toggle" class="toggle-line" type="button">
+            <span class="toggle-copy"><strong>Show previous rounds</strong></span>
+            <span id="history-switch" class="switch" aria-hidden="true"></span>
+          </button>
+          <button id="confirm-toggle" class="toggle-line" type="button">
+            <span class="toggle-copy"><strong>Confirm to continue</strong></span>
+            <span id="confirm-switch" class="switch" aria-hidden="true"></span>
           </button>
         </section>
         <section class="settings-card">
@@ -1493,6 +1538,7 @@
 
     const EXTRA_COLORS = ["#ae7bcc", "#ce7c39"];
     const TIME_PRESETS = [180, 300, 600, 900, 1200, 1800];
+    const INCREMENT_PRESETS = [0, 1, 2, 3, 5, 10];
     const LOW_TIME_MS = 30000;
     const AUDIO_SLOTS = [
       { id: "turn", title: "Clock pass sound", help: "Plays when the active player passes the turn." },
@@ -1519,13 +1565,19 @@
     let orderMode = "custom";
     let gameMode = "timer";
     let timePerPlayer = 300;
-    let timeoutBehavior = "skip";
+    let timeoutBehavior = "eliminate"; // "eliminate" | "skip-turn" | "overtime"
+    let incrementSeconds = 0;         // seconds added after each turn
     let showHundredths = false;
+    let showSeconds = false;
+    let showHistory = false;
+    let confirmToContinue = false;
+    let timeScope = "match";
     let currentTheme = "light";
     let themeAudioFiles = Object.fromEntries(Object.keys(THEMES).map((key) => [key, {}]));
 
     let gameRunning = false;
     let paused = false;
+    let waitingConfirm = false;
     let currentTurnIndex = 0;
     let roundNumber = 1;
     let playerState = [];
@@ -1543,6 +1595,7 @@
       initPlayers();
       syncCustomThemeSwatches();
       buildTimePresetButtons();
+      buildIncrementPresetButtons();
       buildThemeButtons();
       buildAudioSlots();
       buildCustomThemeEditor();
@@ -1569,10 +1622,17 @@
       document.getElementById("custom-minutes").addEventListener("input", handleCustomHms);
       document.getElementById("custom-seconds").addEventListener("input", handleCustomHms);
       document.getElementById("ms-toggle").addEventListener("click", toggleHundredths);
+      document.getElementById("fmt-toggle").addEventListener("click", toggleShowSeconds);
+      document.getElementById("history-toggle").addEventListener("click", toggleShowHistory);
+      document.getElementById("confirm-toggle").addEventListener("click", toggleConfirmToContinue);
+      document.getElementById("scope-match").addEventListener("click", () => setTimeScope("match"));
+      document.getElementById("scope-turn").addEventListener("click", () => setTimeScope("turn"));
       document.getElementById("mode-timer").addEventListener("click", () => setGameMode("timer"));
       document.getElementById("mode-stopwatch").addEventListener("click", () => setGameMode("stopwatch"));
-      document.getElementById("timeout-skip").addEventListener("click", () => setTimeoutBehavior("skip"));
+      document.getElementById("timeout-eliminate").addEventListener("click", () => setTimeoutBehavior("eliminate"));
+      document.getElementById("timeout-skip-turn").addEventListener("click", () => setTimeoutBehavior("skip-turn"));
       document.getElementById("timeout-overtime").addEventListener("click", () => setTimeoutBehavior("overtime"));
+      document.getElementById("increment-seconds").addEventListener("input", handleIncrementInput);
       document.getElementById("mode-custom").addEventListener("click", () => setOrderMode("custom"));
       document.getElementById("mode-cw").addEventListener("click", () => setOrderMode("cw"));
       document.getElementById("mode-ccw").addEventListener("click", () => setOrderMode("ccw"));
@@ -1581,7 +1641,6 @@
       document.getElementById("pause-btn").addEventListener("click", togglePause);
       document.getElementById("pass-btn").addEventListener("click", nextTurn);
       document.getElementById("open-settings-setup").addEventListener("click", openSettings);
-      document.getElementById("open-settings-inline").addEventListener("click", openSettings);
       document.getElementById("open-settings-game").addEventListener("click", openSettings);
       document.getElementById("close-settings-btn").addEventListener("click", closeSettings);
       document.getElementById("close-settings-top-btn").addEventListener("click", closeSettings);
@@ -1606,6 +1665,13 @@
           renderBoard();
         }
       });
+
+      // Safety net: clean up any orphaned drag ghost on any new touch
+      document.addEventListener("touchstart", () => {
+        document.querySelectorAll("[data-drag-ghost]").forEach(el => el.remove());
+        const stale = document.body.querySelector(".order-item[style*='opacity: 0.35']");
+        if (stale) stale.style.opacity = "";
+      }, { passive: true });
     }
 
     function buildTimePresetButtons() {
@@ -1619,6 +1685,21 @@
         button.dataset.seconds = String(seconds);
         button.textContent = presetLabel(seconds);
         button.addEventListener("click", () => pickTime(seconds));
+        row.appendChild(button);
+      });
+    }
+
+    function buildIncrementPresetButtons() {
+      const row = document.getElementById("increment-presets");
+      row.innerHTML = "";
+
+      INCREMENT_PRESETS.forEach((seconds) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "chip";
+        button.dataset.seconds = String(seconds);
+        button.textContent = seconds === 0 ? "Off" : `${seconds}s`;
+        button.addEventListener("click", () => pickIncrement(seconds));
         row.appendChild(button);
       });
     }
@@ -1734,8 +1815,10 @@
     function renderSetup() {
       renderPlayerRows();
       renderGameModeState();
+      renderScopeState();
       renderTimeState();
       renderTimeoutBehaviorState();
+      renderIncrementState();
       renderToggleState();
       renderOrderModeState();
       renderOrderList();
@@ -1777,7 +1860,7 @@
         });
 
         removeBtn.addEventListener("click", () => removePlayer(index));
-        removeBtn.disabled = players.length <= 2;
+        removeBtn.disabled = players.length <= 1;
 
         rows.appendChild(row);
       });
@@ -1797,7 +1880,7 @@
     }
 
     function removePlayer(index) {
-      if (players.length <= 2) return;
+      if (players.length <= 1) return;
 
       players.splice(index, 1);
       syncTurnOrderAfterRosterChange();
@@ -1840,6 +1923,36 @@
       });
     }
 
+    function pickIncrement(seconds) {
+      incrementSeconds = seconds;
+      document.getElementById("increment-seconds").value = "";
+      playSound("ui");
+      renderIncrementState();
+      saveSettings();
+    }
+
+    function handleIncrementInput() {
+      const v = parseInt(document.getElementById("increment-seconds").value);
+      incrementSeconds = isNaN(v) ? 0 : Math.max(0, v);
+      renderIncrementState();
+      saveSettings();
+    }
+
+    function renderIncrementState() {
+      document.getElementById("increment-section").style.display = gameMode === "timer" ? "grid" : "none";
+      
+      document.querySelectorAll("#increment-presets .chip").forEach((chip) => {
+        chip.classList.toggle("on", Number(chip.dataset.seconds) === incrementSeconds);
+      });
+
+      const incInput = document.getElementById("increment-seconds");
+      if (!INCREMENT_PRESETS.includes(incrementSeconds) && incrementSeconds > 0) {
+        incInput.value = incrementSeconds;
+      } else if (document.activeElement !== incInput) {
+        incInput.value = "";
+      }
+    }
+
     function setTimeoutBehavior(mode) {
       timeoutBehavior = mode;
       playSound("ui");
@@ -1849,7 +1962,14 @@
 
     function renderTimeoutBehaviorState() {
       document.getElementById("timeout-behavior-section").style.display = gameMode === "timer" ? "grid" : "none";
-      document.getElementById("timeout-skip").classList.toggle("on", timeoutBehavior === "skip");
+      
+      const skipTurnBtn = document.getElementById("timeout-skip-turn");
+      
+      // Hide the Skip Turn button entirely unless we are in Per Turn mode
+      skipTurnBtn.style.display = timeScope === "turn" ? "" : "none";
+
+      document.getElementById("timeout-eliminate").classList.toggle("on", timeoutBehavior === "eliminate");
+      skipTurnBtn.classList.toggle("on", timeoutBehavior === "skip-turn");
       document.getElementById("timeout-overtime").classList.toggle("on", timeoutBehavior === "overtime");
     }
 
@@ -1859,6 +1979,7 @@
       renderGameModeState();
       renderTimeState();
       renderTimeoutBehaviorState();
+      renderIncrementState();
       saveSettings();
     }
 
@@ -1878,6 +1999,8 @@
     }
 
     function renderCustomThemeEditorState() {
+      const card = document.getElementById("custom-theme-card");
+      if (card) card.style.display = currentTheme === "custom" ? "" : "none";
       document.getElementById("custom-theme-editor").classList.toggle("show", currentTheme === "custom");
       CUSTOM_THEME_FIELDS.forEach((field) => {
         const input = document.getElementById(`custom-theme-${field.key}`);
@@ -1893,8 +2016,52 @@
       saveSettings();
     }
 
+    function toggleShowSeconds() {
+      showSeconds = !showSeconds;
+      playSound("ui");
+      renderToggleState();
+      saveSettings();
+    }
+
+    function toggleShowHistory() {
+      showHistory = !showHistory;
+      playSound("ui");
+      renderToggleState();
+      saveSettings();
+    }
+
+    function toggleConfirmToContinue() {
+      confirmToContinue = !confirmToContinue;
+      playSound("ui");
+      renderToggleState();
+      saveSettings();
+    }
+
+    function setTimeScope(scope) {
+      timeScope = scope;
+      playSound("ui");
+      
+      // Safety feature: if we switch back to 'match', and had 'skip-turn' selected,
+      // fallback to 'eliminate' so it doesn't get stuck on a hidden option
+      if (timeScope !== "turn" && timeoutBehavior === "skip-turn") {
+        timeoutBehavior = "eliminate";
+      }
+
+      renderScopeState();
+      renderTimeoutBehaviorState();
+      saveSettings();
+    }
+
+    function renderScopeState() {
+      document.getElementById("scope-match").classList.toggle("on", timeScope === "match");
+      document.getElementById("scope-turn").classList.toggle("on", timeScope === "turn");
+    }
+
     function renderToggleState() {
       document.getElementById("ms-switch").classList.toggle("on", showHundredths);
+      document.getElementById("fmt-switch").classList.toggle("on", showSeconds);
+      document.getElementById("history-switch").classList.toggle("on", showHistory);
+      document.getElementById("confirm-switch").classList.toggle("on", confirmToContinue);
     }
 
     function openSettings() {
@@ -1956,11 +2123,13 @@
     }
 
     function updateSettingsSummary() {
+      const el = document.getElementById("settings-summary-text");
+      if (!el) return;
       const themeLabel = THEMES[currentTheme]?.label || "Theme";
       const hundredthsLabel = showHundredths ? "hundredths on" : "hundredths off";
       const profile = getCurrentThemeAudioProfile();
       const assignedCount = AUDIO_SLOTS.filter((slot) => profile[slot.id]?.url).length;
-      document.getElementById("settings-summary-text").textContent =
+      el.textContent =
         `${themeLabel} theme, ${hundredthsLabel}, ${assignedCount} custom sound${assignedCount === 1 ? "" : "s"} in this theme.`;
     }
 
@@ -2041,50 +2210,93 @@
     }
 
     function enableDragBehavior(item, orderIndex) {
+      // Desktop drag-and-drop
       item.addEventListener("dragstart", () => {
         dragFrom = orderIndex;
         setTimeout(() => item.classList.add("dragging"), 0);
       });
-
-      item.addEventListener("dragend", () => {
-        item.classList.remove("dragging");
-      });
-
-      item.addEventListener("dragover", (event) => {
-        event.preventDefault();
-        item.classList.add("drag-over");
-      });
-
-      item.addEventListener("dragleave", () => {
-        item.classList.remove("drag-over");
-      });
-
-      item.addEventListener("drop", (event) => {
-        event.preventDefault();
+      item.addEventListener("dragend", () => item.classList.remove("dragging"));
+      item.addEventListener("dragover", (e) => { e.preventDefault(); item.classList.add("drag-over"); });
+      item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
+      item.addEventListener("drop", (e) => {
+        e.preventDefault();
         item.classList.remove("drag-over");
         if (dragFrom === null || dragFrom === orderIndex) return;
         swapTurnOrder(dragFrom, orderIndex);
       });
 
-      item.addEventListener("touchstart", () => {
+      // Touch drag — ghost follows finger, drops on release
+      let ghost = null;
+      let startY = 0;
+      let startX = 0;
+
+      const cleanupGhost = () => {
+        if (ghost) { ghost.remove(); ghost = null; }
+        item.style.opacity = "";
+        document.querySelectorAll(".order-item").forEach(el => el.classList.remove("drag-over"));
+      };
+
+      item.addEventListener("touchstart", (e) => {
         dragFrom = orderIndex;
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+
+        // Create ghost copy
+        ghost = item.cloneNode(true);
+        ghost.setAttribute("data-drag-ghost", "1");
+        const rect = item.getBoundingClientRect();
+        ghost.style.cssText = `
+          position: fixed;
+          left: ${rect.left}px;
+          top: ${rect.top}px;
+          width: ${rect.width}px;
+          opacity: 0.85;
+          pointer-events: none;
+          z-index: 9999;
+          transition: none;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+        `;
+        document.body.appendChild(ghost);
+        item.style.opacity = "0.35";
       }, { passive: true });
 
-      item.addEventListener("touchmove", (event) => {
-        event.preventDefault();
-        const touch = event.touches[0];
-        if (!touch) return;
+      item.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        if (!ghost) return;
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        const rect = item.getBoundingClientRect();
+        ghost.style.left = `${rect.left + dx}px`;
+        ghost.style.top = `${rect.top + dy}px`;
 
-        for (const element of document.elementsFromPoint(touch.clientX, touch.clientY)) {
-          const target = element.closest(".order-item");
-          if (!target || target === item) continue;
-          const toIndex = Number(target.dataset.position);
-          if (!Number.isNaN(toIndex) && toIndex !== dragFrom) {
-            swapTurnOrder(orderIndex, toIndex);
+        // Highlight target
+        document.querySelectorAll(".order-item").forEach(el => el.classList.remove("drag-over"));
+        const els = document.elementsFromPoint(touch.clientX, touch.clientY);
+        for (const el of els) {
+          const target = el.closest(".order-item");
+          if (target && target !== item) { target.classList.add("drag-over"); break; }
+        }
+      }, { passive: false });
+
+      item.addEventListener("touchend", (e) => {
+        const touch = e.changedTouches[0];
+        cleanupGhost();
+        const els = document.elementsFromPoint(touch.clientX, touch.clientY);
+        for (const el of els) {
+          const target = el.closest(".order-item");
+          if (target && target !== item) {
+            const toIndex = Number(target.dataset.position);
+            if (!Number.isNaN(toIndex) && toIndex !== orderIndex) {
+              swapTurnOrder(orderIndex, toIndex);
+            }
             break;
           }
         }
-      }, { passive: false });
+      });
+
+      item.addEventListener("touchcancel", cleanupGhost);
     }
 
     function swapTurnOrder(from, to) {
@@ -2094,19 +2306,21 @@
     }
 
     function startGame() {
-      if (players.length < 2) return;
+      if (players.length < 1) return;
 
       document.getElementById("setup-screen").style.display = "none";
       document.getElementById("game-screen").style.display = "block";
 
       playerState = players.map(() => ({
         timeMs: gameMode === "timer" ? timePerPlayer * 1000 : 0,
-        out: false
+        out: false,
+        history: []   // [{timeMs, label}]
       }));
 
       currentTurnIndex = 0;
       roundNumber = 1;
       paused = false;
+      waitingConfirm = false;
       gameRunning = true;
       lastTick = performance.now();
       clearTimeout(autoAdvanceTimer);
@@ -2124,37 +2338,40 @@
       const delta = now - lastTick;
       lastTick = now;
 
-      if (!paused) {
+      if (!paused && !waitingConfirm) {
         const playerIndex = turnOrder[currentTurnIndex];
         const state = playerState[playerIndex];
 
         if (state && !state.out) {
           if (gameMode === "timer") {
-            if (timeoutBehavior === "skip") {
-              state.timeMs = Math.max(0, state.timeMs - delta);
-            } else {
+            if (timeoutBehavior === "overtime") {
               state.timeMs -= delta;
+            } else {
+              state.timeMs = Math.max(0, state.timeMs - delta);
             }
           } else {
             state.timeMs += delta;
           }
           refreshPanel(playerIndex);
 
-          if (gameMode === "timer" && state.timeMs <= LOW_TIME_MS) {
+          if (gameMode === "timer" && state.timeMs <= LOW_TIME_MS && state.timeMs > 0) {
             document.getElementById(`panel-${playerIndex}`)?.classList.add("low");
           }
 
-          if (gameMode === "timer" && timeoutBehavior === "skip" && state.timeMs <= 0 && !state.out) {
-            state.out = true;
-            const panel = document.getElementById(`panel-${playerIndex}`);
-            panel?.classList.add("out");
-
-            clearTimeout(autoAdvanceTimer);
-            autoAdvanceTimer = setTimeout(() => {
-              if (gameRunning) nextTurn();
-            }, 1400);
-          } else if (gameMode === "timer" && timeoutBehavior === "overtime" && state.timeMs < 0) {
-            document.getElementById(`panel-${playerIndex}`)?.classList.add("over");
+          if (gameMode === "timer" && state.timeMs <= 0 && !state.out) {
+            if (timeoutBehavior === "eliminate") {
+              state.out = true;
+              document.getElementById(`panel-${playerIndex}`)?.classList.add("out");
+              clearTimeout(autoAdvanceTimer);
+              autoAdvanceTimer = setTimeout(() => { if (gameRunning) nextTurn(true); }, 1400);
+            } else if (timeoutBehavior === "skip-turn") {
+              // Auto-skip this turn but player is NOT eliminated; reset their time for per-turn
+              state.timeMs = 0; // pin at 0 so it doesn't keep firing
+              clearTimeout(autoAdvanceTimer);
+              autoAdvanceTimer = setTimeout(() => { if (gameRunning) nextTurn(true); }, 1400);
+            } else if (timeoutBehavior === "overtime") {
+              document.getElementById(`panel-${playerIndex}`)?.classList.add("over");
+            }
           }
         }
       }
@@ -2188,6 +2405,7 @@
             <div class="time-main" id="time-main-${index}">${formatTime(playerState[index].timeMs)}</div>
             <div class="time-ms" id="time-ms-${index}">${showHundredths ? "." + formatHundredths(playerState[index].timeMs) : ""}</div>
             <div class="panel-status caps" id="status-${index}"></div>
+            <div class="panel-history" id="history-${index}"></div>
           </div>
         `;
 
@@ -2223,34 +2441,48 @@
       const positions = [];
       const dividers = [];
 
-      if (count === 2) {
+      if (count === 1) {
+        // Full screen
+        positions.push({ x: 0, y: 0, w: width, h: height, rotate: false });
+      } else if (count === 2) {
         positions.push(
           { x: 0, y: 0, w: width, h: halfH, rotate: false },
           { x: 0, y: halfH, w: width, h: halfH, rotate: true }
         );
         dividers.push({ type: "h", at: halfH });
       } else if (count === 3) {
-        positions.push(
-          { x: 0, y: 0, w: width, h: halfH, rotate: false },
-          { x: 0, y: halfH, w: halfW, h: halfH, rotate: false },
-          { x: halfW, y: halfH, w: halfW, h: halfH, rotate: false }
-        );
-        dividers.push({ type: "h", at: halfH }, { type: "v", at: halfW });
+        // Always balanced: portrait → 3 horizontal rows, landscape → 3 vertical columns
+        if (width < height) {
+          positions.push(
+            { x: 0, y: 0,           w: width, h: thirdH, rotate: false },
+            { x: 0, y: thirdH,      w: width, h: thirdH, rotate: false },
+            { x: 0, y: thirdH * 2,  w: width, h: thirdH, rotate: false }
+          );
+          dividers.push({ type: "h", at: thirdH }, { type: "h", at: thirdH * 2 });
+        } else {
+          const thirdWL = width / 3;
+          positions.push(
+            { x: 0,           y: 0, w: thirdWL,     h: height, rotate: false },
+            { x: thirdWL,     y: 0, w: thirdWL,     h: height, rotate: false },
+            { x: thirdWL * 2, y: 0, w: thirdWL,     h: height, rotate: false }
+          );
+          dividers.push({ type: "v", at: thirdWL }, { type: "v", at: thirdWL * 2 });
+        }
       } else if (count === 4) {
         positions.push(
-          { x: 0, y: 0, w: halfW, h: halfH, rotate: false },
-          { x: halfW, y: 0, w: halfW, h: halfH, rotate: false },
-          { x: 0, y: halfH, w: halfW, h: halfH, rotate: false },
-          { x: halfW, y: halfH, w: halfW, h: halfH, rotate: false }
+          { x: 0,      y: 0,      w: halfW, h: halfH, rotate: false },
+          { x: halfW,  y: 0,      w: halfW, h: halfH, rotate: false },
+          { x: 0,      y: halfH,  w: halfW, h: halfH, rotate: false },
+          { x: halfW,  y: halfH,  w: halfW, h: halfH, rotate: false }
         );
         dividers.push({ type: "h", at: halfH }, { type: "v", at: halfW });
       } else if (count === 5) {
         positions.push(
-          { x: 0, y: 0, w: halfW, h: halfH, rotate: false },
-          { x: halfW, y: 0, w: halfW, h: halfH, rotate: false },
-          { x: 0, y: halfH, w: thirdW, h: halfH, rotate: false },
-          { x: thirdW, y: halfH, w: thirdW, h: halfH, rotate: false },
-          { x: thirdW * 2, y: halfH, w: thirdW, h: halfH, rotate: false }
+          { x: 0,           y: 0,      w: halfW,  h: halfH, rotate: false },
+          { x: halfW,       y: 0,      w: halfW,  h: halfH, rotate: false },
+          { x: 0,           y: halfH,  w: thirdW, h: halfH, rotate: false },
+          { x: thirdW,      y: halfH,  w: thirdW, h: halfH, rotate: false },
+          { x: thirdW * 2,  y: halfH,  w: thirdW, h: halfH, rotate: false }
         );
         dividers.push(
           { type: "h", at: halfH },
@@ -2260,12 +2492,12 @@
         );
       } else if (count === 6) {
         positions.push(
-          { x: 0, y: 0, w: thirdW, h: halfH, rotate: false },
-          { x: thirdW, y: 0, w: thirdW, h: halfH, rotate: false },
-          { x: thirdW * 2, y: 0, w: thirdW, h: halfH, rotate: false },
-          { x: 0, y: halfH, w: thirdW, h: halfH, rotate: false },
-          { x: thirdW, y: halfH, w: thirdW, h: halfH, rotate: false },
-          { x: thirdW * 2, y: halfH, w: thirdW, h: halfH, rotate: false }
+          { x: 0,           y: 0,      w: thirdW, h: halfH, rotate: false },
+          { x: thirdW,      y: 0,      w: thirdW, h: halfH, rotate: false },
+          { x: thirdW * 2,  y: 0,      w: thirdW, h: halfH, rotate: false },
+          { x: 0,           y: halfH,  w: thirdW, h: halfH, rotate: false },
+          { x: thirdW,      y: halfH,  w: thirdW, h: halfH, rotate: false },
+          { x: thirdW * 2,  y: halfH,  w: thirdW, h: halfH, rotate: false }
         );
         dividers.push(
           { type: "h", at: halfH },
@@ -2299,6 +2531,7 @@
       const main = document.getElementById(`time-main-${playerIndex}`);
       const ms = document.getElementById(`time-ms-${playerIndex}`);
       const status = document.getElementById(`status-${playerIndex}`);
+      const historyEl = document.getElementById(`history-${playerIndex}`);
       if (!main || !ms || !status) return;
 
       main.textContent = formatTime(state.timeMs);
@@ -2308,12 +2541,24 @@
         status.textContent = "Time out";
       } else if (gameMode === "timer" && timeoutBehavior === "overtime" && state.timeMs < 0) {
         status.textContent = "Overtime";
+      } else if (waitingConfirm && turnOrder[currentTurnIndex] === playerIndex) {
+        status.textContent = "Press again to continue";
       } else if (turnOrder[currentTurnIndex] === playerIndex) {
         status.textContent = "Tap to pass";
       } else if (gameMode === "stopwatch") {
         status.textContent = "Elapsed";
       } else {
         status.textContent = "";
+      }
+
+      if (historyEl) {
+        if (showHistory && state.history?.length) {
+          historyEl.innerHTML = state.history
+            .map(h => `<span class="panel-history-item">${h}</span>`)
+            .join("");
+        } else {
+          historyEl.innerHTML = "";
+        }
       }
     }
 
@@ -2329,12 +2574,64 @@
       players.forEach((_, index) => refreshPanel(index));
     }
 
-    function nextTurn() {
+    function nextTurn(forced = false) {
       if (!gameRunning) return;
+
+      const playerIndex = turnOrder[currentTurnIndex];
+      const state = playerState[playerIndex];
+      const panel = document.getElementById(`panel-${playerIndex}`);
+
+      // Confirm-to-continue: first press freezes, second press advances
+      if (confirmToContinue && !waitingConfirm && !state.out && !forced) {
+        waitingConfirm = true;
+        panel?.classList.add("waiting-confirm");
+        const statusEl = document.getElementById(`status-${playerIndex}`);
+        if (statusEl) statusEl.textContent = "Press again to continue";
+        lastTick = performance.now();
+        return;
+      }
+
+      // Clear waiting state
+      waitingConfirm = false;
+      panel?.classList.remove("waiting-confirm");
 
       clearTimeout(autoAdvanceTimer);
       playSound("turn");
 
+      // Apply increment to current player's bank (per-match only; per-turn resets anyway)
+      if (gameMode === "timer" && incrementSeconds > 0 && !state.out && timeScope === "match") {
+        state.timeMs = Math.min(state.timeMs + incrementSeconds * 1000, timePerPlayer * 1000 * 3);
+      }
+
+      // Record history for current player before advancing
+      if (showHistory) {
+        const hms = formatTime(
+          timeScope === "turn" && gameMode === "timer"
+            ? timePerPlayer * 1000 - state.timeMs
+            : state.timeMs
+        );
+        const hund = showHundredths ? "." + formatHundredths(
+          timeScope === "turn" && gameMode === "timer"
+            ? timePerPlayer * 1000 - state.timeMs
+            : state.timeMs
+        ) : "";
+        const suffix = gameMode === "timer"
+          ? (timeScope === "turn" ? "used" : "left")
+          : "";
+        const label = `R${roundNumber}: ${hms}${hund}${suffix ? " " + suffix : ""}`;
+        state.history.unshift(label);
+        if (state.history.length > 3) state.history.pop();
+        refreshPanel(playerIndex);
+      }
+
+      // Per-turn scope: reset timer/stopwatch for next turn
+      if (timeScope === "turn" && !state.out) {
+        state.timeMs = gameMode === "timer" ? timePerPlayer * 1000 : 0;
+        const panelEl = document.getElementById(`panel-${playerIndex}`);
+        panelEl?.classList.remove("low", "over");
+      }
+
+      // Advance turn
       let tries = 0;
       do {
         currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
@@ -2346,6 +2643,17 @@
         }
       } while (playerState[turnOrder[currentTurnIndex]].out);
 
+      // Per-turn scope: reset incoming player's timer too
+      if (timeScope === "turn") {
+        const nextState = playerState[turnOrder[currentTurnIndex]];
+        if (!nextState.out) {
+          nextState.timeMs = gameMode === "timer" ? timePerPlayer * 1000 : 0;
+          const nextPanel = document.getElementById(`panel-${turnOrder[currentTurnIndex]}`);
+          nextPanel?.classList.remove("low", "over");
+        }
+      }
+
+      lastTick = performance.now();
       updateCenterHud();
       activateCurrentPanel();
     }
@@ -2451,10 +2759,13 @@
       const negative = ms < 0;
       const absMs = Math.abs(ms);
       const totalSeconds = Math.floor(absMs / 1000);
+      const sign = negative ? "-" : "";
+      if (showSeconds) {
+        return `${sign}${totalSeconds}s`;
+      }
       const hours = Math.floor(totalSeconds / 3600);
       const minutes = Math.floor((totalSeconds % 3600) / 60);
       const seconds = totalSeconds % 60;
-      const sign = negative ? "-" : "";
       if (hours > 0) {
         return `${sign}${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
       }
@@ -2523,10 +2834,15 @@
         const data = {
           players,
           timePerPlayer,
+          incrementSeconds,
           orderMode,
           gameMode,
+          timeScope,
           timeoutBehavior,
           showHundredths,
+          showSeconds,
+          showHistory,
+          confirmToContinue,
           currentTheme,
           turnOrder,
         };
@@ -2539,12 +2855,17 @@
         const raw = localStorage.getItem("scrabble_settings");
         if (!raw) return;
         const s = JSON.parse(raw);
-        if (Array.isArray(s.players) && s.players.length >= 2) players = s.players;
+        if (Array.isArray(s.players) && s.players.length >= 1) players = s.players;
         if (typeof s.timePerPlayer === "number") timePerPlayer = s.timePerPlayer;
+        if (typeof s.incrementSeconds === "number") incrementSeconds = s.incrementSeconds;
         if (s.orderMode) orderMode = s.orderMode;
         if (s.gameMode) gameMode = s.gameMode;
         if (s.timeoutBehavior) timeoutBehavior = s.timeoutBehavior;
         if (typeof s.showHundredths === "boolean") showHundredths = s.showHundredths;
+        if (typeof s.showSeconds === "boolean") showSeconds = s.showSeconds;
+        if (typeof s.showHistory === "boolean") showHistory = s.showHistory;
+        if (typeof s.confirmToContinue === "boolean") confirmToContinue = s.confirmToContinue;
+        if (s.timeScope) timeScope = s.timeScope;
         if (s.currentTheme && THEMES[s.currentTheme]) currentTheme = s.currentTheme;
         if (Array.isArray(s.turnOrder)) turnOrder = s.turnOrder;
       } catch (e) {}
